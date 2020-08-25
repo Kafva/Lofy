@@ -1,4 +1,3 @@
-// Useful when creating REST API querys
 const queryString = require('querystring');
 
 module.exports = (CONSTS) => 
@@ -30,9 +29,9 @@ module.exports = (CONSTS) =>
             reply.redirect( `${CONSTS.base_uri}/error?` + 
                 queryString.stringify( {error: msg })
             ); 
-        }
-
+        },
     };
-    
+
+
     return functions;
 };
