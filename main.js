@@ -16,6 +16,7 @@ const path = require('path');
 
 // Make readFile return a promise and create an async function returning the promise
 // readAsync() can then be awaited inside runAsync()
+// Make sure that the ./secret files don't have trailing characters
 const readFile = util.promisify(fs.readFile);
 const readAsync = async (name) => readFile(name,'utf8') ;
 
@@ -83,16 +84,25 @@ const runAsync = async () =>
 	})
 
 	// COOKIE support
-	// This plugin gives us access to reply.cookies and request.cookies
+	// This plugin gives us access to reply.setCookie() and request.cookies
 	fastify.register(require('fastify-cookie'), {
 		secret: functions.stateString(CONSTS.STATE_STR_LENGTH), 
 		parseOptions: {} 
 	})
 
+	// SESSION support (depends on the cookie plugin)
+	// The `secure` option needs to be set to false for plain HTTP
+	//fastify.register(require('fastify-session'), 
+	//{
+	//	secret: functions.stateString(32),
+	//	options: {secure: false} 
+	//});	
+
 	//************************************/
 
-	// Setup the routes
+	// Setup the routes and error handlers
 	require("./routes")(fastify,functions,CONSTS);
+	require("./errorHandlers")(fastify);
 
 	// Start the server
 	require("./server")(fastify,CONSTS);

@@ -1,11 +1,13 @@
-const queryString = require('querystring');
-
-module.exports = (CONSTS) => 
 // Functions in `module.exports` will be available inside the required() object that is imported in server.js
 // Since we assign a function to module.exports in this case we need to RETURN a dictionary
 // of the functions we define 
+
+const queryString = require('querystring');
+
+module.exports = (CONSTS) => 
 {
-    var functions = 
+    
+    var exports = 
     {
         stateString: (length) =>
         // Produce an alphanumeric random string
@@ -33,5 +35,5 @@ module.exports = (CONSTS) =>
     };
 
 
-    return functions;
+    return exports;
 };

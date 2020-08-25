@@ -10,8 +10,13 @@
     "fastify": "^3.2.0",
     "fastify-cookie": "^4.0.2",
     "fastify-cors": "^4.1.0",
+    "fastify-session": "^5.0.0",
     "fastify-static": "^3.2.0",
     "nodemon": "^2.0.4",
     "point-of-view": "^4.4.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Kafva/Cloudify.git"
   }
 }

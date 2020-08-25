@@ -2,6 +2,9 @@
 
 // Registering the application is only neccessary when accessing personal user information (TODO at later stage)
 // https://developer.spotify.com/documentation/web-playback-sdk/reference/#playing-a-spotify-uri
+
+document.querySelector('p').innerHTML = `<b>Cookies</b>: ${document.cookie}`
+
 window.onSpotifyWebPlaybackSDKReady = () => 
 {
     const spotify_uri = 'spotify:track:0HadrlP2mwJidGF3pyBX4H?si'
