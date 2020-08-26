@@ -24,7 +24,7 @@ const refreshToken = async (expires_in,refresh_token) =>
     req.onload = () => 
     {
         // Request finished. Do processing here.
-        console.log("DONE", req.response);
+        console.log("TODO", req.response);
     };
     
     req.send('');
