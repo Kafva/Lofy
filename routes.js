@@ -12,54 +12,67 @@ module.exports = (fastify,functions,CONSTS) =>
         return reply.sendFile("resc/favicon.png") 
     })
 
-    //*** OAuth STEP 1 ***//
-    fastify.get('/login', (request, reply) =>
-    // When a user tries to login redirect them to accounts.spotify 
+    //*** OAuth STEP 0 ***//
+    fastify.get('/setstate', (request, reply) =>
+    // Set state cookie
     {
-        // We will need to include:
-        //	* the `client_id` (of the app) so spotify knows what app the user is trying to use
-        //	* the `redirect_uri` (/callback) which the user will be sent back to after successful authentication with spotfiy
-        // 	* a random `state` string for security
-        //	* a blankspace seperated list of scopes that the app will need to access
-        // 	* `show_dialog` can be set to true (false is default) if the user should be prompted
-        // 	to authorize the app anew every time they use it (set to true for testing)
-        //  * `response_type`, set to 'code'
-
         // To be able to verify that the response we recieve from spotify is valid
         // we save a cookie with the client containing the state,
         // when the client responds we make sure that the storedState in the cookie
-        // matches that of the state in the request ot /callback
+        // matches that of the state in the request to /callback
         let state = functions.stateString(CONSTS.STATE_STR_LENGTH);
-        console.log(`STATE: ${state}`);
         
-        // https://cri.dev/posts/2020-03-07-Twitter-OAuth-Login-with-fastify-and-Node.js/
+        console.log(`/setstate STATE: ${state}`);
+        
         // Note that the interactions with `reply` need to be chained togheter
         // We (seemingly) can't send a reply with a Set-Cookie to the client and redirect at the same time
-        // with fastify (possible with express) and therefore we store the state in the request.session storage
-        // instead (might be possible to use a 'preHandler'...)
+        // with fastify (possible with express) and therefore we redirect to a seperate route
+        // were the redirection takes place after setting the cookie     
         reply.setCookie( CONSTS.state_cookie_key, state, 
         {  
-            domain: CONSTS.base_uri.replace(/^https?:\/\//,'').replace(/:3443$/, ''),
+            domain: CONSTS.base_uri.replace(/^https?:\/\//,'').replace(new RegExp( ":" + CONSTS.WEB_SERVICE_PORT + "$" ), ''),
             path: '/',
             signed: true,
-        }).redirect(CONSTS.base_uri)
-
-        //request.session.state = state;
-
-        // .stringify will produce a URL encoded string from a given JSON object
-        //reply.redirect( CONSTS.auth_endpoint + 
-        //    queryString.stringify( 
-        //    {
-        //        client_id: CONSTS.client_id,
-        //        redirect_uri: CONSTS.redirect_uri,
-        //        state:  CONSTS.state,
-        //        scope: CONSTS.scope ,
-        //        response_type: 'code',
-        //        show_dialog: true
-        //    }
-        //));
+        })
+        .redirect(CONSTS.base_uri + '/authorize')
 
         //https://accounts.spotify.com/authorize?client_id=08c759bd98d149f58ce04c9caabb0f97%0A&redirect_uri=http%3A%2F%2Flocalhost%3A3443%2Fcallback&state=&scope=playlist-read-private%20streaming&response_type=code
+    })
+    
+    //*** OAuth STEP 1 ***//
+    fastify.get('/authorize', (request, reply) =>
+    // Redirect to accounts.spotify after setting the state cookie under /setstate
+    {
+        // Recall that the key-name for the state value isn't just 'state' 
+        let state = eval(`request.cookies.${CONSTS.state_cookie_key}`) || null;
+        console.log(`/authorize STATE: ${state}`);
+
+        if (state)
+        {
+            // We will need to include:
+            //	* the `client_id` (of the app) so spotify knows what app the user is trying to use
+            //	* the `redirect_uri` (/callback) which the user will be sent back to after successful authentication with spotfiy
+            // 	* a random `state` string for security
+            //	* a blankspace seperated list of scopes that the app will need to access
+            // 	* `show_dialog` can be set to true (false is default) if the user should be prompted
+            // 	to authorize the app anew every time they use it (set to true for testing)
+            //  * `response_type`, set to 'code'
+
+            // .stringify will produce a URL encoded string from a given JSON object
+            reply.redirect( CONSTS.auth_endpoint + 
+                queryString.stringify( 
+                {
+                    client_id: CONSTS.client_id,
+                    redirect_uri: CONSTS.redirect_uri,
+                    state: state,
+                    scope: CONSTS.scope ,
+                    response_type: 'code',
+                    show_dialog: true
+                }
+            ));
+        }
+        // if no state has been set redirect back to /setstate
+        else { reply.redirect('/setstate'); }
     })
 
     //*** OAuth STEP 2 ***//
@@ -85,11 +98,11 @@ module.exports = (fastify,functions,CONSTS) =>
             {
                 if ( state === storedState )
                 {
-                    console.log("---------------SUCCESSS-------------");
+                    reply.view("/templates/index.ejs" , { title: "Successful authorization" })
                 }
-                else { functions.errorRedirect(reply,"state mismatch"); }
+                else { functions.errorRedirect(reply,"State mismatch"); }
             }
-            else { functions.errorRedirect(reply,"no stored state in cookies!"); }
+            else { functions.errorRedirect(reply,"No stored state in cookies!"); }
         }
 
 
