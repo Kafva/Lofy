@@ -29,16 +29,18 @@ const runAsync = async () =>
 		STATE_STR_LENGTH: 16,
 		DIR_ROOT: 'public',
 
+		token_endpoint: 'https://accounts.spotify.com/api/token',
 		auth_endpoint: 'https://accounts.spotify.com/authorize?',
 		base_uri: 'http://localhost:3443',
 		redirect_uri: `http://localhost:3443/callback`,
 
 		// Authorizations required by the app
 		// https://developer.spotify.com/documentation/general/guides/scopes/
-		scope: 'playlist-read-private streaming',
+		scope: 'playlist-read-private streaming user-read-private user-read-email',
 		state_cookie_key: 'spotify_auth_state',
 
-		client_id: await readAsync("./secret/client_id") 
+		client_id: 	   await readAsync("./secret/client_id"), 
+		client_secret: await readAsync("./secret/client_secret") 
 	}
 
 	//*************************************/

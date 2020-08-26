@@ -1,22 +1,18 @@
-// Step 1. Play a track
-
-// Registering the application is only neccessary when accessing personal user information (TODO at later stage)
-// https://developer.spotify.com/documentation/web-playback-sdk/reference/#playing-a-spotify-uri
-
-document.querySelector('p').innerHTML = `<b>Cookies</b>: ${document.cookie}`
 
 window.onSpotifyWebPlaybackSDKReady = () => 
 {
-    const spotify_uri = 'spotify:track:0HadrlP2mwJidGF3pyBX4H?si'
-    const token = '';
-    
-    //const player = new Spotify.Player({
-    //    name: 'cloudify',
-    //    getOAuthToken: cb => { cb(token); }
-    //});
+    if (document.location.href.match("/home"))
+    {
+        // Extract the URL parameters into a JSON object
+        var param_dict = getParamDict();
+   
+        insertInfoList(param_dict);
 
+        refreshToken(param_dict.expires_in, param_dict.refresh_token);
 
-
+        var spotify_uri = 'spotify:track:0HadrlP2mwJidGF3pyBX4H?si'
+        var access_token = param_dict.access_token;
+    }
 };
 
 

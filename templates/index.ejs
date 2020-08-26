@@ -12,10 +12,21 @@
     </head>
 
     <body>
-
         <% if (typeof title == 'undefined') { title = 'Cloudify'; } %>
         <h1><%= title %></h1>
 
+        <ul id="list">
+
+        </ul>
+
+        <!-- Spotify CDN -->
+        <script src="https://sdk.scdn.co/spotify-player.js"></script>
+
+        <!-- Functions -->
+        <script src="clientFunctions.js"></script>
+
+        <!-- Main script -->
+        <script src="client.js"></script>
     </body>
 
 </html>
