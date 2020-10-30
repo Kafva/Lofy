@@ -36,7 +36,7 @@ const runAsync = async () =>
 
 		// Authorizations required by the app
 		// https://developer.spotify.com/documentation/general/guides/scopes/
-		scope: 'playlist-read-private streaming user-read-private user-read-email',
+		scope: 'playlist-read-private streaming user-read-private user-read-email user-modify-playback-state user-read-playback-state user-read-currently-playing',
 		state_cookie_key: 'spotify_auth_state',
 
 		client_id: 	   await readAsync("./secret/client_id"), 

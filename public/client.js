@@ -6,45 +6,42 @@ window.onSpotifyWebPlaybackSDKReady = () =>
         // Extract the URL parameters into a JSON object
         var param_dict = getParamDict();
    
-        insertInfoList(param_dict);
+        insertInfoList('#params',param_dict);
 
-        refreshToken(param_dict.expires_in, param_dict.refresh_token);
+        // refreshToken(param_dict.expires_in, param_dict.refresh_token);
 
-        var spotify_uri = 'spotify:track:0HadrlP2mwJidGF3pyBX4H?si'
+        var spotify_uri = 'spotify:track:6EtKlIQmGPB9SX8UjDJG5s'
         var access_token = param_dict.access_token;
+       
+        // https://developer.spotify.com/documentation/web-playback-sdk/reference/#objects
+        // Create a "Web Playback" object which can be chosen as the device to stream music to
+        // (initalised through including a script on the main page)
+        const player = new Spotify.Player({
+            name: 'Cloudify Player',
+            getOAuthToken: cb => { cb(access_token); }
+        });
+        
+        addPlayerListeners(player);
+       
+        // Connect the player
+        player.connect();
+
+        // Before sending a URI to the 'play' endpoint we need to 'activate' the player, we can see
+        // the player state from the devices endpoint
+        
+        // TODO set an event listener for the entire window and redirect cases from there
+        document.getElementById('play').addEventListener('click', () => 
+        {  
+            console.log(`Playing: ${spotify_uri}`);
+            // Utilise an API endpoint to modify what song is playing using the created player 
+            playTrack(spotify_uri, player._options.id, access_token);
+        });
+
+        document.getElementById('devices').addEventListener('click', () => 
+        {  
+            // Utilise an API endpoint to modify what song is playing using the created player 
+            listDevices(access_token);
+        });
+
     }
 };
-
-
-
-//**** BASIC EXAMPLE ****/
-////window.onSpotifyWebPlaybackSDKReady = () => {
-//  const token = 'BQD1uZeceL6IMlO2N3XN244H3G5dByrgn7jXUItv_nTa9MnmorTfVUVFpJjlRV60FGXEFqtBO4R2B_fMkkRNR9ZIeeexwTCI9r52uEBwlEqdhM-FHabEqO25155VHFPOL_RQYkB9-vUdAEtU1v-CMGXaCDUexLp2qrA';
-//  const player = new Spotify.Player({
-//    name: 'Web Playback SDK Quick Start Player',
-//    getOAuthToken: cb => { cb(token); }
-//  });
-//
-//  // Error handling
-//  player.addListener('initialization_error', ({ message }) => { console.error(message); });
-//  player.addListener('authentication_error', ({ message }) => { console.error(message); });
-//  player.addListener('account_error', ({ message }) => { console.error(message); });
-//  player.addListener('playback_error', ({ message }) => { console.error(message); });
-//
-//  // Playback status updates
-//  player.addListener('player_state_changed', state => { console.log(state); });
-//
-//  // Ready
-//  player.addListener('ready', ({ device_id }) => {
-//    console.log('Ready with Device ID', device_id);
-//  });
-//
-//  // Not Ready
-//  player.addListener('not_ready', ({ device_id }) => {
-//    console.log('Device ID has gone offline', device_id);
-//  });
-//
-//  // Connect to the player!
-//  player.connect();
-//};
-//

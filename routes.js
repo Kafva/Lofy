@@ -190,6 +190,7 @@ module.exports = (fastify,functions,CONSTS) =>
     })
     
     //**** OAuth STEP 4 *****/
+    //******* TODO **********/
     fastify.get('/refresh', (req, res) => 
     {
         // When the acces_token expires the client will contact this end-point to

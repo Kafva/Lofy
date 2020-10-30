@@ -3,9 +3,7 @@
 	<head>
 		<title>Cloudify</title>
         
-        <!-- meta tag to specify the width of the viewport and the initial zoom-->
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        
         <link href="style.css" rel="stylesheet" , type="text/css">
         <link rel="shortcut icon" type="img/png" href="favicon.png">
 
@@ -15,8 +13,13 @@
         <% if (typeof title == 'undefined') { title = 'Cloudify'; } %>
         <h1><%= title %></h1>
 
-        <ul id="list">
+        <div id="play">Play me</div>
+        
+        <div id="devices">Devices</div>
+        <div id="deviceList"></div>
 
+        <hr/>
+        <ul id="params">
         </ul>
 
         <!-- Spotify CDN -->

@@ -23,19 +23,73 @@ const refreshToken = async (expires_in,refresh_token) =>
 
     req.onload = () => 
     {
-        // Request finished. Do processing here.
-        console.log("TODO", req.response);
+        // Request finished, do something(?)
+        console.log("Recived response from /refresh: ", req.response);
     };
     
     req.send('');
 }
 
+//********** API Endpoints ******************/
+
+const listDevices = async ( access_token ) => 
+{
+    console.log(`Token: ${access_token}`);
+    let res = await fetch('https://api.spotify.com/v1/me/player/devices', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${access_token}`
+        },
+    });
+    
+    // The response contains a readable stream in the body
+    res_data = await res.body.getReader().read();
+
+    let res_ = document.querySelector('#deviceList'); 
+    res_.innerText = ""
+    res_.innerText =  new TextDecoder("utf-8").decode(res_data.value);
+};
+
+const playTrack = ( spotify_uri, playerId, access_token ) => 
+{
+    console.log(`Token: ${access_token}`);
+    fetch(`https://api.spotify.com/v1/me/player/play?device_id=${playerId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ uris: [spotify_uri] }),
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${access_token}`
+        },
+    });
+};
+
+
+const addPlayerListeners = (player) =>
+{
+    // See https://developer.spotify.com/documentation/web-playback-sdk/quick-start/
+    // Error handling
+    const errors = ['initialization_error', 'authentication_error', 'account_error', 'playback_error'];
+    errors.forEach( (item) => 
+    {
+        player.addListener(item, ({message}) => console.error(`${item}:`, message)  );
+    });
+
+    // Playback status updates
+    player.addListener('player_state_changed', state => { console.log('player_state_changed', state); });
+
+    // Ready
+    player.addListener('ready', ({ device_id }) => { console.log('Ready with Device ID', device_id); });
+
+    // Not Ready
+    player.addListener('not_ready', ({ device_id }) => { console.log('Device ID has gone offline', device_id); });
+}
 
 //********* MISC *********//
 
-const insertInfoList = (param_dict) =>
+const insertInfoList = (selector,param_dict) =>
 {
-    let ul = document.querySelector("#list");
+    let ul = document.querySelector(selector);
     
     let li = document.createElement("li"); li.innerText = `cookie: ${document.cookie}` 
     ul.appendChild( li );
