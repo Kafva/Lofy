@@ -9,8 +9,7 @@ window.onSpotifyWebPlaybackSDKReady = () =>
         insertInfoList('#params',param_dict);
 
         // refreshToken(param_dict.expires_in, param_dict.refresh_token);
-
-        var spotify_uri = 'spotify:track:6EtKlIQmGPB9SX8UjDJG5s'
+        
         var access_token = param_dict.access_token;
        
         // https://developer.spotify.com/documentation/web-playback-sdk/reference/#objects
@@ -26,22 +25,12 @@ window.onSpotifyWebPlaybackSDKReady = () =>
         // Connect the player
         player.connect();
 
-        // Before sending a URI to the 'play' endpoint we need to 'activate' the player, we can see
+        // Before interacting with endpoints we need to 'activate' the player, we can see
         // the player state from the devices endpoint
         
-        // TODO set an event listener for the entire window and redirect cases from there
-        document.getElementById('play').addEventListener('click', () => 
-        {  
-            console.log(`Playing: ${spotify_uri}`);
-            // Utilise an API endpoint to modify what song is playing using the created player 
-            playTrack(spotify_uri, player._options.id, access_token);
-        });
-
-        document.getElementById('devices').addEventListener('click', () => 
-        {  
-            // Utilise an API endpoint to modify what song is playing using the created player 
-            listDevices(access_token);
-        });
+        // Instead of setting specific events for specific elements we will use a global catch all
+        // listener and redirect events based on what was clicked 
+        window.addEventListener('click', () => clickHandler(player,access_token) );
 
     }
 };

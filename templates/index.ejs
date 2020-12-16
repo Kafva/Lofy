@@ -13,11 +13,17 @@
         <% if (typeof title == 'undefined') { title = 'Cloudify'; } %>
         <h1><%= title %></h1>
 
-        <div id="play">Play me</div>
+        <div class="clickable" id="play">Play Random Access Memories</div>
+        <div class="clickable" id="pauseToggle">&lt; - &gt;</div>
+        <div class="clickable" id="volumeUp">Volume up</div>
+        <div class="clickable" id="volumeDown">Volume down</div>
         
-        <div id="devices">Devices</div>
-        <div id="deviceList"></div>
-
+        <hr/>
+            <div class="clickable" id="playerInfo">Player Info</div>
+            <div id="playerInfoList"></div>
+        <hr/>
+            <div class=".clickable" id="devices">Devices</div>
+            <div id="deviceList"></div>
         <hr/>
         <ul id="params">
         </ul>

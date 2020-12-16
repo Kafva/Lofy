@@ -13,3 +13,4 @@ node_modules
 example
 secret
 notes.md
+misc/*
