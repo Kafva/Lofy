@@ -4,13 +4,11 @@ window.onSpotifyWebPlaybackSDKReady = () =>
     if (document.location.href.match("/home"))
     {
         // Extract the URL parameters into a JSON object
-        var param_dict = getParamDict();
+        let param_dict = getParamDict();
    
         insertInfoList('#params',param_dict);
 
-        // refreshToken(param_dict.expires_in, param_dict.refresh_token);
-        
-        var access_token = param_dict.access_token;
+        let access_token = param_dict.access_token;
        
         // https://developer.spotify.com/documentation/web-playback-sdk/reference/#objects
         // Create a "Web Playback" object which can be chosen as the device to stream music to
@@ -30,7 +28,11 @@ window.onSpotifyWebPlaybackSDKReady = () =>
         
         // Instead of setting specific events for specific elements we will use a global catch all
         // listener and redirect events based on what was clicked 
-        window.addEventListener('click', () => clickHandler(player,access_token) );
+        const listener = () => clickHandler(player,access_token);
 
+        window.addEventListener('click', listener, true);
+
+        // Initiate timer for sending a request to /refresh to get a new access_token
+        refreshToken(player, param_dict.expires_in, param_dict.refresh_token);
     }
 };

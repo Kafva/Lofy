@@ -3,37 +3,102 @@
 // of the functions we define 
 
 const queryString = require('querystring');
+const request = require('request');
 
 module.exports = (CONSTS) => 
 {
-    
-    var exports = 
+    const getTokenParams = (body, refresh) =>
     {
-        stateString: (length) =>
-        // Produce an alphanumeric random string
+        if ( body.access_token !== undefined && body.expires_in !== undefined && body.refresh_token !== undefined )
         {
-            let bases = [ 48, 65, 97 ];
-            let cnts  = [ 9, 25, 25  ];
-            let index = -1; let str = "";
+            return {
+                access_token: body.access_token,
+                refresh_token: body.refresh_token,
+                expires_in: body.expires_in
+            };  
+        }
+        else if ( body.access_token !== undefined && body.expires_in !== undefined && refresh )
+        // NOTE that when using the refresh_token to gain a new access_token the response could
+        // lack a new refresh_token
+        {
+            return {
+                access_token: body.access_token,
+                expires_in: body.expires_in
+            };  
+        }
+        else { return false; }
+    }
+    
+    const errorRedirect = (reply,msg, refresh=false) =>
+    {
+        // We do not want to redirect when raising errors on the /refresh route
+        if (refresh) { reply.send(msg) }
+        else
+        {
+            reply.redirect( `${CONSTS.base_uri}/error?` + queryString.stringify( {error: msg })  ); 
+        }
+    }
 
-            for (let i=0; i<length; i++)
+    const stateString = (length) =>
+    // Produce an alphanumeric random string
+    {
+        let bases = [ 48, 65, 97 ];
+        let cnts  = [ 9, 25, 25  ];
+        let index = -1; let str = "";
+
+        for (let i=0; i<length; i++)
+        {
+            // If we multiply by 3 there is a minimal chance that we get a index out of bounds
+            index = Math.floor(Math.random() * 2.9999999);
+            str += String.fromCharCode( Math.floor(Math.random()*cnts[index] + bases[index]) );
+        }
+        
+        return str;
+    }
+
+    const getAuthHeader = () =>
+    {
+        // <header>
+        // * Authorization: base64() encoding of client_id and client_secret on the format
+        //   Authorization: Basic <base64 encoded client_id:client_secret>
+
+        // To encode using base64 we allocate a buffer object
+        return new Buffer.alloc( 
+            CONSTS.client_id.length+CONSTS.client_secret.length+1,
+            CONSTS.client_id + ':' + CONSTS.client_secret)
+        .toString('base64');
+    }
+
+    const tokenRequest = (res, postOptions, refresh=false) =>
+    {
+        // We use a seperate module to send out our own request
+        request.post( postOptions, (error, response, body) => 
+        {
+            if (!error && response.statusCode === 200)
             {
-                // If we multiply by 3 there is a minimal chance that we get a index out of bounds
-                index = Math.floor(Math.random() * 2.9999999);
-                str += String.fromCharCode( Math.floor(Math.random()*cnts[index] + bases[index]) );
+                // A non-error response will contain JSON data in the message body:
+                // * access_token: The access_token to be used in subsequent calls to the Spotify API
+                // * token_type: Set to 'Bearer'
+                // * scope: The blankspace seperated list of scopes that the token is valid for
+                // * expires_in: (seconds)
+                // * refresh_token: This token can be used when the access_token expires to get a new
+                // access_token (and refresh_token) by sending a message to /api/token with the 'code'
+                // set to the value of the refresh_token. The response will be on the same format as here
+                
+                // With this we can pass the access_token to the client and let them issue
+                // requests to the Spotify web API. 
+
+                if ( (params = getTokenParams(body, refresh)) !== false )
+                {
+                    if (refresh) { res.send(params); }
+                    else { res.redirect('/home?' + queryString.stringify(params)); }
+                }
+                else { errorRedirect(res, `Missing component(s) of response: ${params}`, refresh); }
             }
-            
-            return str;
-        },
+            else { errorRedirect(res, error || body.error, refresh); }
+        });
 
-        errorRedirect: (reply,msg) =>
-        {
-            reply.redirect( `${CONSTS.base_uri}/error?` + 
-                queryString.stringify( {error: msg })
-            ); 
-        },
-    };
+    }
 
-
-    return exports;
+    return { getTokenParams, errorRedirect, stateString, getAuthHeader, tokenRequest };
 };

@@ -1,52 +1,83 @@
-const FAIL = -1;
+//*********** CONSTANTS ***********/
 const volumeStep = 10;
+const defaultPercent = 20;
 const playerName = 'Cloudify Player';
+const inactivePlayer = 'Player inactive';
+const playlistName = '🌙';
 
-const refreshToken = async (expires_in,refresh_token) =>
+const refreshToken = async (player, expires_in, refresh_token) =>
 {
+    refresh_token = refresh_token;
+    
     // Wait the time specified by expires_in and after that send a request to the
     // servers /refresh endpoint to update the access_token
-    //await new Promise(r => setTimeout(r, expires_in*1000));
-    await new Promise(r => setTimeout(r, 2000));
+    await new Promise(r => setTimeout(r, (expires_in-10)*1000));
     
-    var req = new XMLHttpRequest();
-    req.open('GET', '/refresh?' + `refresh_token=${refresh_token}`, true);
+    //console.log("Waiting...")
+    //await new Promise(r => setTimeout(r, 10*1000));
+    
+    let xhr = new XMLHttpRequest();
+    xhr.open('GET', '/refresh?' + `refresh_token=${refresh_token}`, true);
 
-    req.onload = () => 
+    xhr.onload = () => 
     {
-        // Request finished, do something(?)
-        console.log("Recived response from /refresh: ", req.response);
+        // The response from the server should be a redirect to /home
+        // with new parameters
+        console.log("Recived response from /refresh: ", xhr.response, JSON.parse(xhr.response), );
+        try
+        {
+            res = JSON.parse(xhr.response) 
+        }
+        catch(e){ console.error("Non-parsable response", xhr.response); }
+
+
+        // Re-register the event-listener for the window with the new access_token
+        const listener = () => clickHandler(player,res.access_token);
+        
+        window.removeEventListener('click', listener );
+        window.addEventListener('click', listener, true);
+
+        if (res.refresh_token !== undefined)
+        // Restart the refreshToken() loop with the new refresh_token (if one was given)
+        {
+            refreshToken(player, res.expires_in, res.refresh_token);
+        }
+        else { refreshToken(player, res.expires_in, refresh_token); }
     };
     
-    req.send('');
+    xhr.send();
 }
 
 //********** EVENT HANDLING ******************/
-const clickHandler = (player,access_token) =>
+const clickHandler = (player, access_token) =>
 {
     var spotify_uri = 'spotify:track:0IedgQjjJ8Ad4B3UDQ5Lyn'
 
     switch (event.target.id)
     {
         case 'play':
-            playTrack(spotify_uri, player._options.id, access_token); 
+            playTrack(access_token, spotify_uri, player._options.id); 
             break;
         case 'devices':
-            listDevices(access_token); 
+            getDeviceJSON(access_token, debug=true); 
             break;
         //-- Requires player to be active --//
         case 'pauseToggle':
             togglePlayback(access_token); 
             break;
-        case 'playerInfo':
-            getPlayerInfo(access_token);
-            break;
         case 'volumeUp':
-            setVolume(volumeStep,playerId,access_token);
+            setVolume(access_token, volumeStep);
             break;
         case 'volumeDown':
-            setVolume(-volumeStep,playerId,access_token);
+            setVolume(access_token, -volumeStep);
             break;
+        case 'playerInfo':
+            getPlayerJSON(access_token, debug=true);
+            break;
+        case 'playlists':
+            getPlaylistJSON(access_token, playlistName, debug=true);
+            break;
+
     }
 }
 
@@ -72,10 +103,10 @@ const addPlayerListeners = (player) =>
 
 //********** API Endpoints ******************/
 
-const playTrack = ( spotify_uri, playerId, access_token ) => 
+const playTrack = async (access_token, spotify_uri, playerId) => 
 {
-    console.log(`Playing: ${spotify_uri}`);
-    fetch(`https://api.spotify.com/v1/me/player/play?device_id=${playerId}`, {
+    console.log(`Playing: ${spotify_uri} (${access_token})`);
+    await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${playerId}`, {
         method: 'PUT',
         body: JSON.stringify({ uris: [spotify_uri] }),
         headers: {
@@ -85,144 +116,155 @@ const playTrack = ( spotify_uri, playerId, access_token ) =>
     });
 
     document.querySelector("#pauseToggle").innerText = "< Pause >";
+
+    // Set volume to <default> %
+    setVolume(access_token, -1, defaultPercent);
 }
 
-const listDevices = async ( access_token ) => 
-{
-    let res = await fetch('https://api.spotify.com/v1/me/player/devices', {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${access_token}`
-        },
-    });
-    
-    // The response contains a readable stream in the body
-    res_data = await res.body.getReader().read();
-
-    //document.querySelector('#deviceList').innerText = "";
-    document.querySelector('#deviceList').innerText =  new TextDecoder("utf-8").decode(res_data.value);
-}
-
-const getPlayerInfo = async ( access_token ) =>
-{
-    let res = await fetch('https://api.spotify.com/v1/me/player', {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${access_token}`
-        },
-    });
-    
-    // The response contains a readable stream in the body
-    res_data = await res.body.getReader().read();
-
-    document.querySelector('#playerInfoList').innerText =  new TextDecoder("utf-8").decode(res_data.value);
-}
-
-const togglePlayback = async ( access_token ) => 
+const togglePlayback = async (access_token) => 
 {
     //*** NOTE that one cannot directly ['index'] the return value from an async function */
-    let a = await getDeviceJSON(access_token)
-    console.log("is_active", a, a['is_active'])
-    if (a['is_active'])
+    let _json = await getDeviceJSON(access_token)
+    if (_json != null && _json != undefined)
     {
-        a = await getPlayerJSON(access_token)
-        console.log("is_playing", a, a['is_playing'])
-        if (a['is_playing'])
+        if (_json['is_active'])
         {
-            await fetch(`https://api.spotify.com/v1/me/player/pause`, {
-                method: 'PUT',
-                headers: { 'Authorization': `Bearer ${access_token}` },
-            });
-            document.querySelector("#pauseToggle").innerText = "< Play >";
-        }
-        else
-        {
-            await fetch(`https://api.spotify.com/v1/me/player/play`, {
-                method: 'PUT',
-                headers: { 'Authorization': `Bearer ${access_token}` },
-            });
-            document.querySelector("#pauseToggle").innerText = "< Pause >";
+            _json = await getPlayerJSON(access_token)
+            if (_json != null && _json != undefined)
+            {
+                if (_json['is_playing'])
+                {
+                    await fetch(`https://api.spotify.com/v1/me/player/pause`, {
+                        method: 'PUT',
+                        headers: { 'Authorization': `Bearer ${access_token}` },
+                    });
+                    document.querySelector("#pauseToggle").innerText = "< Play >";
+                }
+                else
+                {
+                    await fetch(`https://api.spotify.com/v1/me/player/play`, {
+                        method: 'PUT',
+                        headers: { 'Authorization': `Bearer ${access_token}` },
+                    });
+                    document.querySelector("#pauseToggle").innerText = "< Pause >";
+                }
+            }
+            else { console.error(`togglePlayback(): getPlayerJSON() ==> ${_json}`); }
         }
     }
-    else { console.log("Player inactive"); }
+    else { console.error(`togglePlayback(): getDeviceJSON() ==> ${_json}`); }
 }
 
-
-const setVolume = (diff, access_token ) =>
-// Change the volume by diff percent
+const setVolume = async (access_token, diff, newPercent=null ) =>
+// Change the volume by diff percent or to a static value
 {
-    // Fetch the current volume
-    console.log(`Setting volume: ${diff} % (Token: ${access_token})`);
-    fetch(`https://api.spotify.com/v1/me/player/volume?volume_percent=${diff}`, {
-        method: 'PUT',
-        body: JSON.stringify({ uris: [spotify_uri] }),
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${access_token}`
-        },
-    });
+    let _json = await getDeviceJSON(access_token)
+    console.log("is_active", _json, _json['is_active'])
+
+    if (_json['is_active'])
+    {
+        if (newPercent == null)
+        // Use diff paramater
+        {
+            // Fetch the current volume
+            _json = await getPlayerJSON(access_token)
+            if(_json['device'] != undefined)
+            { 
+                newPercent = _json['device']['volume_percent'] + diff;
+            }
+            else { console.error("Failed to fetch device info"); }
+        }
+        
+        if ( 0 <= newPercent && newPercent <= 100 )
+        {
+            fetch(`https://api.spotify.com/v1/me/player/volume?volume_percent=${newPercent}`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${access_token}` },
+            });
+
+            document.querySelector("#volume").innerText = `< ${newPercent} % >`
+        }
+        else { console.log(`setVolume(): invalid percent ${newPercent}`); }
+        
+    }
+    else { console.log(`setVolume(): ${inactivePlayer}`); }
 }
 
-//********* MISC *********//
+//****** Device/Player Info  *********/
 
-const getDeviceJSON = async (access_token) =>
+const getPlaylistJSON = async (access_token, name, debug=false) =>
+// Return the JSON object corresponding to the given playlist
+{
+    console.log(`Token ${access_token}`)
+
+    let res = await fetch('https://api.spotify.com/v1/me/playlists', {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${access_token}` },
+    });
+    
+    body = await res.text();
+    let playlists = null;
+    
+    try { playlists = JSON.parse(body)['items'];  }
+    catch (e) { console.error(e,devices); return null; }
+
+    for (let item of playlists)
+    {
+        if (item['name'] == name)
+        {
+            if (debug) { document.querySelector('#debugSpace').innerText = JSON.stringify(item); }
+            return item;
+        }   
+    }
+    return null;
+}
+
+const getDeviceJSON = async (access_token, debug=false) =>
 // async functions always return a Promise for their return value
 {
     let res = await fetch('https://api.spotify.com/v1/me/player/devices', {
         method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${access_token}`
-        },
-    });
-    
-    // The response contains a readable stream in the body
-    res_data = await res.body.getReader().read();
-    res_data = new TextDecoder("utf-8").decode(res_data.value);
-    
-    let _dev = null;
-    let devices = null;
-    
-    try { devices = JSON.parse(res_data)['devices'];  }
-    catch (e) { console.error(e); }
-    
-    // Return the device corresponding to the player
-    devices.forEach( (device) => {
-        console.log("loop:",device)
-        if (device['name'] == playerName)
-        { 
-            _dev = device; 
-        }
+        headers: { 'Authorization': `Bearer ${access_token}` },
     });
 
-    return _dev;
+    body = await res.text();
+    
+    try { devices = JSON.parse(body)['devices'];  }
+    catch (e) { console.error(e,devices); return null; }
+
+    for (let item of devices)
+    {
+        if (item['name'] == playerName)
+        {
+            if (debug) { document.querySelector('#debugSpace').innerText =  JSON.stringify(item); }
+            return item;
+        }   
+    }
+    return null;
 }
 
-
-
-const getPlayerJSON = async (access_token) =>
+const getPlayerJSON = async (access_token, debug=false) =>
 {
+    // The Content-Type header is only neccessary when sending data in the body
     let res = await fetch('https://api.spotify.com/v1/me/player', {
         method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${access_token}`
-        },
+        headers: { 'Authorization': `Bearer ${access_token}` },
     });
     
-    // The response contains a readable stream in the body
-    res_data = await res.body.getReader().read();
-    res_data = new TextDecoder("utf-8").decode(res_data.value);
-    
+    // Instead of using a readable stream we can fetch the complete response body
+    // with a Promise via text()
+    body = await res.text();
     try
     {
-        return JSON.parse(res_data);
+        body = JSON.parse(body)
     }
-    catch (e) { console.error(e); }
+    catch(e){ console.error(e); return null; }
+
+    if (debug) { document.querySelector('#debugSpace').innerText = JSON.stringify(body); }
+    return body;
 }
 
+//********* MISC *********//
 
 const insertInfoList = (selector,param_dict) =>
 {
