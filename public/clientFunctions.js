@@ -1,14 +1,15 @@
-//*********** CONSTANTS ***********/
-const volumeStep = 10;
-const defaultPercent = 20;
-const playerName = 'Cloudify Player';
-const inactivePlayer = 'Player inactive';
-const playlistName = '🌙';
+//********** EVENT HANDLING ******************/
 
-const refreshToken = async (player, expires_in, refresh_token) =>
+const refreshToken = async (player, access_token, refresh_token, expires_in) =>
 {
-    refresh_token = refresh_token;
-    
+    // NOTE that the listener does not take any arguments, the player and access_token
+    // variables from the current context will therefore be passed to the click-handler
+    let listener = () => clickHandler(player,access_token);
+
+    // Instead of setting specific events for specific elements we will use a global catch all
+    // listener and redirect events based on what was clicked 
+    window.addEventListener('click', listener, true);
+
     // Wait the time specified by expires_in and after that send a request to the
     // servers /refresh endpoint to update the access_token
     await new Promise(r => setTimeout(r, (expires_in-10)*1000));
@@ -30,33 +31,31 @@ const refreshToken = async (player, expires_in, refresh_token) =>
         }
         catch(e){ console.error("Non-parsable response", xhr.response); }
 
-
-        // Re-register the event-listener for the window with the new access_token
-        const listener = () => clickHandler(player,res.access_token);
+        // Deregister the event-listener for the window and let the next invocation of
+        // refreshToken() re-add it with the new access_token
+        window.removeEventListener('click', listener, useCapture=true);
         
-        window.removeEventListener('click', listener );
-        window.addEventListener('click', listener, true);
+        access_token = res.access_token
 
         if (res.refresh_token !== undefined)
         // Restart the refreshToken() loop with the new refresh_token (if one was given)
         {
-            refreshToken(player, res.expires_in, res.refresh_token);
+            refreshToken(player,  access_token, res.refresh_token, res.expires_in);
         }
-        else { refreshToken(player, res.expires_in, refresh_token); }
+        else { refreshToken(player,  access_token, refresh_token, res.expires_in); }
     };
     
     xhr.send();
 }
 
-//********** EVENT HANDLING ******************/
+//** Keyboard shortcuts **/
+
 const clickHandler = (player, access_token) =>
 {
-    var spotify_uri = 'spotify:track:0IedgQjjJ8Ad4B3UDQ5Lyn'
-
     switch (event.target.id)
     {
         case 'play':
-            playTrack(access_token, spotify_uri, player._options.id); 
+            startPlayer(access_token, CONSTS.playlistName, player._options.id); 
             break;
         case 'devices':
             getDeviceJSON(access_token, debug=true); 
@@ -66,16 +65,23 @@ const clickHandler = (player, access_token) =>
             togglePlayback(access_token); 
             break;
         case 'volumeUp':
-            setVolume(access_token, volumeStep);
+            setVolume(access_token, CONSTS.volumeStep);
             break;
         case 'volumeDown':
-            setVolume(access_token, -volumeStep);
+            setVolume(access_token, -CONSTS.volumeStep);
             break;
+        case 'previous':
+            skipTrack(access_token, next=false);
+            break;
+        case 'next':
+            skipTrack(access_token);
+            break;
+        //-- Debug ---//
         case 'playerInfo':
             getPlayerJSON(access_token, debug=true);
             break;
-        case 'playlists':
-            getPlaylistJSON(access_token, playlistName, debug=true);
+        case 'playlist':
+            fetchTracks(access_token,CONSTS.playlistName);
             break;
 
     }
@@ -103,22 +109,50 @@ const addPlayerListeners = (player) =>
 
 //********** API Endpoints ******************/
 
-const playTrack = async (access_token, spotify_uri, playerId) => 
+const startPlayer = async (access_token, playlistName, playerId) => 
 {
-    console.log(`Playing: ${spotify_uri} (${access_token})`);
+    playlist_json = await getPlaylistJSON(access_token, playlistName);
+    
+    // The URI supplied in the body can reference a playlist, track etc.
     await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${playerId}`, {
         method: 'PUT',
-        body: JSON.stringify({ uris: [spotify_uri] }),
+        body: JSON.stringify({ context_uri: playlist_json['uri'] }),
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${access_token}`
         },
     });
-
-    document.querySelector("#pauseToggle").innerText = "< Pause >";
-
+    
     // Set volume to <default> %
-    setVolume(access_token, -1, defaultPercent);
+    setVolume(access_token, -1, CONSTS.defaultPercent);
+    
+    // Enable shuffle and fetch the current track (after a short delay)
+    await new Promise(r => setTimeout(r, 1000));
+    await fetch(`https://api.spotify.com/v1/me/player/shuffle?state=true`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${access_token}` },
+    });
+
+    await getCurrentTrack(access_token);
+
+    // Set the pause button
+    document.querySelector("#pauseToggle").innerText = "< Pause >";
+}
+
+const getCurrentTrack = async (access_token) =>
+{
+    // Fetch the current song and display its name
+    let res = await fetch(`https://api.spotify.com/v1/me/player/currently-playing`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${access_token}` },
+    });
+
+    let body = await res.text();
+
+    try { track = JSON.parse(body)['item']  }
+    catch (e) { console.error(e,body); return null; }
+
+    document.querySelector("#currentTrack").innerText = `Current track: ${track['name']}`;
 }
 
 const togglePlayback = async (access_token) => 
@@ -187,10 +221,32 @@ const setVolume = async (access_token, diff, newPercent=null ) =>
         else { console.log(`setVolume(): invalid percent ${newPercent}`); }
         
     }
-    else { console.log(`setVolume(): ${inactivePlayer}`); }
+    else { console.log(`setVolume(): ${CONSTS.inactivePlayer}`); }
 }
 
-//****** Device/Player Info  *********/
+const skipTrack = async (access_token, next=true) =>
+{
+    let _json = await getDeviceJSON(access_token)
+    console.log("is_active", _json, _json['is_active'])
+
+    if (_json['is_active'])
+    {
+        let endpoint = 'next';
+        if(!next) { endpoint = 'previous' }
+        fetch(`https://api.spotify.com/v1/me/player/${endpoint}`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${access_token}` },
+        });
+
+        // Update the 'currently playing' indicator
+        // after a short wait to avoid the previous song being fetched
+        await new Promise(r => setTimeout(r, 1000));
+        await getCurrentTrack(access_token);
+    }
+    else { console.log(`skipTrack(): ${CONSTS.inactivePlayer}`); }
+}
+
+//****** JSON Fetches  *********/
 
 const getPlaylistJSON = async (access_token, name, debug=false) =>
 // Return the JSON object corresponding to the given playlist
@@ -234,7 +290,7 @@ const getDeviceJSON = async (access_token, debug=false) =>
 
     for (let item of devices)
     {
-        if (item['name'] == playerName)
+        if (item['name'] == CONSTS.playerName)
         {
             if (debug) { document.querySelector('#debugSpace').innerText =  JSON.stringify(item); }
             return item;
@@ -265,6 +321,24 @@ const getPlayerJSON = async (access_token, debug=false) =>
 }
 
 //********* MISC *********//
+
+const fetchTracks = async (access_token, playlistName, debug=false) => 
+{
+    playlist_json = await getPlaylistJSON(access_token, playlistName)
+
+    let res = await fetch(`https://api.spotify.com/v1/playlists/${playlist_json['id']}/tracks`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${access_token}` },
+    });
+
+    body = await res.text()
+    
+    try { tracks = JSON.parse(body);  }
+    catch (e) { console.error(e,tracks); return null; }
+
+    if (debug) { document.querySelector('#debugSpace').innerText = JSON.stringify(tracks); }
+    return tracks;
+}
 
 const insertInfoList = (selector,param_dict) =>
 {

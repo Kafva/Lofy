@@ -10,7 +10,7 @@
 // To wait for the readFile() operation to complete we start
 // the app in an async function
 
-const fs = require('fs');
+const fs   = require('fs');
 const util = require('util');
 const path = require('path');
 

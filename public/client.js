@@ -1,4 +1,3 @@
-
 window.onSpotifyWebPlaybackSDKReady = () => 
 {
     if (document.location.href.match("/home"))
@@ -14,7 +13,7 @@ window.onSpotifyWebPlaybackSDKReady = () =>
         // Create a "Web Playback" object which can be chosen as the device to stream music to
         // (initalised through including a script on the main page)
         const player = new Spotify.Player({
-            name: 'Cloudify Player',
+            name: CONSTS.playerName,
             getOAuthToken: cb => { cb(access_token); }
         });
         
@@ -26,13 +25,9 @@ window.onSpotifyWebPlaybackSDKReady = () =>
         // Before interacting with endpoints we need to 'activate' the player, we can see
         // the player state from the devices endpoint
         
-        // Instead of setting specific events for specific elements we will use a global catch all
-        // listener and redirect events based on what was clicked 
-        const listener = () => clickHandler(player,access_token);
-
-        window.addEventListener('click', listener, true);
-
         // Initiate timer for sending a request to /refresh to get a new access_token
-        refreshToken(player, param_dict.expires_in, param_dict.refresh_token);
+        // AND create the event-listener for clicks on the window (we do it inside the
+        // refresh function to be able to re-register the function when a new access_token is given)
+        refreshToken(player, access_token, param_dict.refresh_token, param_dict.expires_in);
     }
 };

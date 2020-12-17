@@ -13,15 +13,18 @@
         <% if (typeof title == 'undefined') { title = 'Cloudify'; } %>
         <h1><%= title %></h1>
 
-        <div class="clickable" id="play">Play Random Access Memories</div>
+        <div class="clickable" id="play">Play 🌙</div>
         <div class="clickable" id="pauseToggle">&lt; - &gt;</div>
         <div class="clickable" id="volumeUp">Volume up</div>
         <div class="clickable" id="volumeDown">Volume down</div>
         <div id="volume">&lt; - &gt;</div>
+        <div id="currentTrack">Current track: - </div>
+        <div class="clickable" id="previous">&lt;&lt;</div>
+        <div class="clickable" id="next">&gt;&gt;</div>
         
         <hr/>
             <div class="clickable" id="playerInfo">Player Info</div>
-            <div class="clickable" id="playlists">Playlists</div>
+            <div class="clickable" id="playlist">Playlist</div>
             <div class="clickable" id="devices">Devices</div>
         <hr/>
             <div id="debugSpace"></div>
@@ -32,8 +35,9 @@
         <!-- Spotify CDN -->
         <script src="https://sdk.scdn.co/spotify-player.js"></script>
 
-        <!-- Functions -->
+        <!-- Functions + Constants -->
         <script src="clientFunctions.js"></script>
+        <script src="clientConstants.js"></script>
 
         <!-- Main script -->
         <script src="client.js"></script>

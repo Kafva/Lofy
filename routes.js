@@ -3,8 +3,6 @@
 
 // Note that requiring() the same package several times won't cause any overhead (cached)
 const queryString = require('querystring');
-//const request = require('request');
-//const { equal } = require('assert');
 
 module.exports = (fastify,functions,CONSTS) => 
 {
