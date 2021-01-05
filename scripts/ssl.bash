@@ -11,9 +11,6 @@ sslPath=$PWD/ssl
 outdir=$PWD/secret
 sslConf=$PWD/scripts/openssl.cnf
 
-[ -d $sslPath ] && rm -r $sslPath
-rm -f $outdir/server.* 2> /dev/null
-
 mkdir -p $sslPath $outdir
 mkdir -p $sslPath/certs $sslPath/newcerts $sslPath/private $sslPath/crl
 [ -f $sslPath/serial ] || echo 01 > $sslPath/serial
@@ -26,27 +23,27 @@ mkdir -p $sslPath/certs $sslPath/newcerts $sslPath/private $sslPath/crl
 # 	* DNS names in the CommonName of a certificate are no longer trusted (use Subject Alternative Name)
 #	* validity period of 825 days or fewer
 
-[ -f $sslPath/ca.key ] || {
+[ -f $sslPath/private/ca.key ] || {
 
 	# Generate self signed root CA cert
-	openssl req -config $sslConf \
+	openssl req -config <(cat $sslConf | sed "s/cloudify/$name/g") \
 		-nodes -x509 -new -days $lifetime \
 		-subj "/CN=$name CA/" \
 		-keyout $sslPath/private/ca.key -out $sslPath/certs/ca.crt
 	false
 
-} && printf "./$(basename $sslPath)/ca.key already exists\n"
+} && printf "./$(basename $sslPath)/private/ca.key already exists\n"
 
 [ -f $outdir/server.key ] || {
 	
 	# Generate server cert to be signed
-	openssl req -config $sslConf \
+	openssl req -config <(cat $sslConf | sed "s/cloudify/$name/g") \
 		-nodes -new -days $lifetime \
 		-subj "/CN=$name/" \
 		-keyout $outdir/server.key -out /tmp/server.csr &&
 
 	# Sign the server cert
-	openssl ca -config $sslConf -policy policy_anything \
+	openssl ca -config <(cat $sslConf | sed "s/cloudify/$name/g") -policy policy_anything \
 	-in /tmp/server.csr -out $outdir/server.crt &&
 
 	rm -f /tmp/server.csr
