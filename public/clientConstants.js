@@ -3,5 +3,12 @@ const CONSTS = {
     defaultPercent: 10,
     playerName: 'Cloudify Player',
     inactivePlayer: 'Player inactive',
-    playlistName: '🌙'
+    playlistName: '🌙',
+
+    //** Shortcuts **/
+    pausePlay: ' ',
+    previous: 'ArrowLeft',
+    volumeDown: 'ArrowDown',
+    next: 'ArrowRight',
+    volumeUp: 'ArrowUp',
 }

@@ -7,6 +7,16 @@ const request = require('request');
 
 module.exports = (CONSTS) => 
 {
+    const setCookie = (res, key, value) =>
+    {
+        res.setCookie( key, value, 
+        {  
+            domain: CONSTS.base_uri.replace(/^https?:\/\//,'').replace(new RegExp( ":" + CONSTS.WEB_SERVICE_PORT + "$" ), ''),
+            path: '/',
+            signed: false,
+        })
+    }
+    
     const getTokenParams = (body, refresh) =>
     {
         if ( body.access_token !== undefined && body.expires_in !== undefined && body.refresh_token !== undefined )
@@ -91,7 +101,23 @@ module.exports = (CONSTS) =>
                 if ( (params = getTokenParams(body, refresh)) !== false )
                 {
                     if (refresh) { res.send(params); }
-                    else { res.redirect('/home?' + queryString.stringify(params)); }
+                    else
+                    { 
+                        // NOTE that using the URL parameters to pass the access_token etc. is not that bad
+                        // provided that HTTPS is being used, the GET parameters are stored in the HTTP payload
+                        // and are thus encrypted until they reach the destination.
+                        // HOWEVER, server logs will of course store the access URLs in plain-text, because of this
+                        // it could be considered slightly safer to use Set-Cookie to pass parameters since
+                        // most server logs won't include the complete list of HTTP headers in their logs
+
+                        // It is informally allowed to specify several cookies in the same 'Set-Cookie'
+                        // header but it is preferable to use a seperate entry for each one
+                        setCookie(res,'access_token', params.access_token);
+                        setCookie(res,'refresh_token', params.refresh_token);
+                        setCookie(res,'expires_in', params.expires_in.toString() );
+                        
+                        res.redirect('/home');
+                    }
                 }
                 else { errorRedirect(res, `Missing component(s) of response: ${params}`, refresh); }
             }

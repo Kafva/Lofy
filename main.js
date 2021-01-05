@@ -26,13 +26,15 @@ const runAsync = async () =>
 	const CONSTS = 
 	{
 		WEB_SERVICE_PORT: 3443,
+		WEB_SERVICE_ADDR: '0.0.0.0',
 		STATE_STR_LENGTH: 16,
 		DIR_ROOT: 'public',
 
+		// Fix invaid client-redirect on dev.spotify
 		token_endpoint: 'https://accounts.spotify.com/api/token',
 		auth_endpoint: 'https://accounts.spotify.com/authorize?',
-		base_uri: 'http://localhost:3443',
-		redirect_uri: `http://localhost:3443/callback`,
+		base_uri: 'https://cloudify:3443',
+		redirect_uri: `https://cloudify:3443/callback`,
 
 		// Authorizations required by the app
 		// https://developer.spotify.com/documentation/general/guides/scopes/
@@ -40,7 +42,10 @@ const runAsync = async () =>
 		state_cookie_key: 'spotify_auth_state',
 
 		client_id: 	   await readAsync("./secret/client_id"), 
-		client_secret: await readAsync("./secret/client_secret") 
+		client_secret: await readAsync("./secret/client_secret"),
+		
+		tls_key: 	   await readAsync("./secret/server.key"),
+		tls_cert: 	   await readAsync("./secret/server.crt")
 	}
 
 	//*************************************/
@@ -53,7 +58,14 @@ const runAsync = async () =>
 
 	// Fastify is an alternative to express, with fastify-static being
 	// requiried to serve static files, i.e. access to reply.sendFile()
-	const fastify = require('fastify')({ logger: true });
+	const fastify = require('fastify')(
+		{ 
+			logger: true,
+			https: {
+				key: CONSTS.tls_key,
+				cert: CONSTS.tls_cert
+			}
+		});
 	const fastify_static = require('fastify-static');
 
 	// Set the static content directory root
@@ -67,12 +79,9 @@ const runAsync = async () =>
 	})
 
 	// Register the CORS (Cross-origin resource sharing) plugin
-	// When issuing a request in JS from a page the HTTP headers 'Origin:'
-	// is accepted by default (Same origin requests)
-
-	// To send requests to other sites we need to explicitly enable these with the
-	// 'Access-Control-Allow-Origin:' field(s) in our HTTP messages  (can be set to wildcard).
-	fastify.register(require('fastify-cors'), { origin: "*" })
+	// Adding a hook for all replies to add the 'Access-Control-Allow-Origin' header allowing XHR requests
+	// to api.spotify.com from the client. Recall that 'Origin' is set in REQUESTS not, replies
+	fastify.register(require('fastify-cors'), { origin: "api.spotify.com"});
 
 	// TEMPLATE ENGINE
 	// Plugin for template engine (i.e. dynamic HTML) compatiblity with fastify

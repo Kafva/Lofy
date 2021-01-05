@@ -5,7 +5,7 @@ module.exports = (fastify,CONSTS) =>
     {
         try 
         {
-            await fastify.listen(CONSTS.WEB_SERVICE_PORT)
+            await fastify.listen(CONSTS.WEB_SERVICE_PORT, CONSTS.WEB_SERVICE_ADDR)
             fastify.log.info(`server listening on ${fastify.server.address().port}`)
         } 
         catch (err) 

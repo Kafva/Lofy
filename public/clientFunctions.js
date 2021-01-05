@@ -1,24 +1,27 @@
 //********** EVENT HANDLING ******************/
 
-const refreshToken = async (player, access_token, refresh_token, expires_in) =>
+// TODO
+//  * Media key support
+//  ### Spotify
+//      * Use Set-Cookie request to transfer
+//      * Read cookies inside event handler (no need to re-register)
+//      * Check refreshToken() de-register of keyboard
+//  ### Local files
+//  ### Soundcloud
+//  ### Front-end
+
+const refreshToken = async (player) =>
 {
-    // NOTE that the listener does not take any arguments, the player and access_token
-    // variables from the current context will therefore be passed to the click-handler
-    let listener = () => clickHandler(player,access_token);
-
-    // Instead of setting specific events for specific elements we will use a global catch all
-    // listener and redirect events based on what was clicked 
-    window.addEventListener('click', listener, true);
-
     // Wait the time specified by expires_in and after that send a request to the
     // servers /refresh endpoint to update the access_token
-    await new Promise(r => setTimeout(r, (expires_in-10)*1000));
+    await new Promise(r => setTimeout(r, ( getCookiesAsJSON().expires_in-10)*1000));
     
     //console.log("Waiting...")
     //await new Promise(r => setTimeout(r, 10*1000));
+    //console.log("Sending /refresh!");
     
     let xhr = new XMLHttpRequest();
-    xhr.open('GET', '/refresh?' + `refresh_token=${refresh_token}`, true);
+    xhr.open('GET', '/refresh?' + `refresh_token=${getCookiesAsJSON().refresh_token}`, true);
 
     xhr.onload = () => 
     {
@@ -31,57 +34,105 @@ const refreshToken = async (player, access_token, refresh_token, expires_in) =>
         }
         catch(e){ console.error("Non-parsable response", xhr.response); }
 
-        // Deregister the event-listener for the window and let the next invocation of
-        // refreshToken() re-add it with the new access_token
-        window.removeEventListener('click', listener, useCapture=true);
-        
-        access_token = res.access_token
+        // Replace the Cookie values for access_token and expires_in
+        document.cookie = `access_token=${res.access_token}`;
+        document.cookie = `expires_in=${res.expires_in}`;
 
+        // The response may or may not contain a new refresh token
         if (res.refresh_token !== undefined)
-        // Restart the refreshToken() loop with the new refresh_token (if one was given)
         {
-            refreshToken(player,  access_token, res.refresh_token, res.expires_in);
+            document.cookie = `refresh_token=${res.refresh_token}`;
         }
-        else { refreshToken(player,  access_token, refresh_token, res.expires_in); }
+
+        // Restart the refreshToken() loop
+        refreshToken(player);
     };
     
     xhr.send();
 }
 
-//** Keyboard shortcuts **/
+//**** Keyboard shortcuts ****/
 
-const clickHandler = (player, access_token) =>
+const keyboardHandler = (event, player) => 
+{
+    console.log(`-------- ${event.key} | ${event.shiftKey} ----------`)   
+
+    if ( event.key == CONSTS.pausePlay )
+    {
+        togglePlayback(CONSTS.playlistName, player); 
+    }
+    else if (event.shiftKey)
+    // All keybinds except SPACE require SHIFT to be held
+    {
+        switch(event.key)
+        {
+            case CONSTS.volumeUp:
+                setVolume(CONSTS.volumeStep);
+                break;
+            case CONSTS.volumeDown:
+                setVolume(-CONSTS.volumeStep);
+                break;
+            case CONSTS.next:
+                skipTrack();
+                break;
+            case CONSTS.previous:
+                skipTrack(next=false);
+                break;
+        }
+    }
+}
+
+//**** Media keys *****/
+
+// throw new o(u.EME_API_NOT_SUPPORTED,"Platform does not support navigator.requestMediaKeySystemAccess").fatal();
+// It seems like the Spotify Web API doesn't work in 'insecure' contexts (i.e. HTTP)
+
+
+const mediaHandlers = () =>
+{
+    navigator.mediaSession.setActionHandler('play', function() { console.log("----PLAY----"); });
+    navigator.mediaSession.setActionHandler('pause', function() { /* Code excerpted. */ });
+    navigator.mediaSession.setActionHandler('stop', function() { /* Code excerpted. */ });
+    //navigator.mediaSession.setActionHandler('seekbackward', function() { /* Code excerpted. */ });
+    //navigator.mediaSession.setActionHandler('seekforward', function() { /* Code excerpted. */ });
+    //navigator.mediaSession.setActionHandler('seekto', function() { /* Code excerpted. */ });
+    navigator.mediaSession.setActionHandler('previoustrack', function() { /* Code excerpted. */ });
+    navigator.mediaSession.setActionHandler('nexttrack', function() { console.log("----NEXT-----"); });
+    //navigator.mediaSession.setActionHandler('skipad', function() { /* Code excerpted. */ });
+}
+
+const clickHandler = (player) =>
 {
     switch (event.target.id)
     {
         case 'play':
-            startPlayer(access_token, CONSTS.playlistName, player._options.id); 
+            startPlayer(CONSTS.playlistName, player._options.id); 
             break;
         case 'devices':
-            getDeviceJSON(access_token, debug=true); 
+            getDeviceJSON(debug=true); 
             break;
         //-- Requires player to be active --//
         case 'pauseToggle':
-            togglePlayback(access_token); 
+            togglePlayback(CONSTS.playlistName, player); 
             break;
         case 'volumeUp':
-            setVolume(access_token, CONSTS.volumeStep);
+            setVolume(CONSTS.volumeStep);
             break;
         case 'volumeDown':
-            setVolume(access_token, -CONSTS.volumeStep);
+            setVolume(-CONSTS.volumeStep);
             break;
         case 'previous':
-            skipTrack(access_token, next=false);
+            skipTrack(next=false);
             break;
         case 'next':
-            skipTrack(access_token);
+            skipTrack();
             break;
         //-- Debug ---//
         case 'playerInfo':
-            getPlayerJSON(access_token, debug=true);
+            getPlayerJSON(debug=true);
             break;
         case 'playlist':
-            fetchTracks(access_token,CONSTS.playlistName);
+            fetchTracks(CONSTS.playlistName);
             break;
 
     }
@@ -109,9 +160,9 @@ const addPlayerListeners = (player) =>
 
 //********** API Endpoints ******************/
 
-const startPlayer = async (access_token, playlistName, playerId) => 
+const startPlayer = async (playlistName, playerId) => 
 {
-    playlist_json = await getPlaylistJSON(access_token, playlistName);
+    playlist_json = await getPlaylistJSON(playlistName);
     
     // The URI supplied in the body can reference a playlist, track etc.
     await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${playerId}`, {
@@ -119,32 +170,32 @@ const startPlayer = async (access_token, playlistName, playerId) =>
         body: JSON.stringify({ context_uri: playlist_json['uri'] }),
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${access_token}`
+            'Authorization': `Bearer ${getCookiesAsJSON().access_token}`
         },
     });
     
     // Set volume to <default> %
-    setVolume(access_token, -1, CONSTS.defaultPercent);
+    setVolume(-1, CONSTS.defaultPercent);
     
     // Enable shuffle and fetch the current track (after a short delay)
     await new Promise(r => setTimeout(r, 1000));
     await fetch(`https://api.spotify.com/v1/me/player/shuffle?state=true`, {
         method: 'PUT',
-        headers: { 'Authorization': `Bearer ${access_token}` },
+        headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
     });
 
-    await getCurrentTrack(access_token);
+    await getCurrentTrack();
 
     // Set the pause button
     document.querySelector("#pauseToggle").innerText = "< Pause >";
 }
 
-const getCurrentTrack = async (access_token) =>
+const getCurrentTrack = async () =>
 {
     // Fetch the current song and display its name
     let res = await fetch(`https://api.spotify.com/v1/me/player/currently-playing`, {
         method: 'GET',
-        headers: { 'Authorization': `Bearer ${access_token}` },
+        headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
     });
 
     let body = await res.text();
@@ -155,22 +206,28 @@ const getCurrentTrack = async (access_token) =>
     document.querySelector("#currentTrack").innerText = `Current track: ${track['name']}`;
 }
 
-const togglePlayback = async (access_token) => 
+const togglePlayback = async (playlistName, player) => 
 {
     //*** NOTE that one cannot directly ['index'] the return value from an async function */
-    let _json = await getDeviceJSON(access_token)
+    let _json = await getDeviceJSON()
     if (_json != null && _json != undefined)
     {
-        if (_json['is_active'])
+        if (!_json['is_active'])
+        // If the player is not active start it
         {
-            _json = await getPlayerJSON(access_token)
+            await startPlayer(playlistName, player._options.id);
+        }
+        else
+        {
+            _json = await getPlayerJSON()
+
             if (_json != null && _json != undefined)
             {
                 if (_json['is_playing'])
                 {
                     await fetch(`https://api.spotify.com/v1/me/player/pause`, {
                         method: 'PUT',
-                        headers: { 'Authorization': `Bearer ${access_token}` },
+                        headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
                     });
                     document.querySelector("#pauseToggle").innerText = "< Play >";
                 }
@@ -178,7 +235,7 @@ const togglePlayback = async (access_token) =>
                 {
                     await fetch(`https://api.spotify.com/v1/me/player/play`, {
                         method: 'PUT',
-                        headers: { 'Authorization': `Bearer ${access_token}` },
+                        headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
                     });
                     document.querySelector("#pauseToggle").innerText = "< Pause >";
                 }
@@ -189,10 +246,10 @@ const togglePlayback = async (access_token) =>
     else { console.error(`togglePlayback(): getDeviceJSON() ==> ${_json}`); }
 }
 
-const setVolume = async (access_token, diff, newPercent=null ) =>
+const setVolume = async (diff, newPercent=null ) =>
 // Change the volume by diff percent or to a static value
 {
-    let _json = await getDeviceJSON(access_token)
+    let _json = await getDeviceJSON()
     console.log("is_active", _json, _json['is_active'])
 
     if (_json['is_active'])
@@ -201,7 +258,7 @@ const setVolume = async (access_token, diff, newPercent=null ) =>
         // Use diff paramater
         {
             // Fetch the current volume
-            _json = await getPlayerJSON(access_token)
+            _json = await getPlayerJSON()
             if(_json['device'] != undefined)
             { 
                 newPercent = _json['device']['volume_percent'] + diff;
@@ -213,7 +270,7 @@ const setVolume = async (access_token, diff, newPercent=null ) =>
         {
             fetch(`https://api.spotify.com/v1/me/player/volume?volume_percent=${newPercent}`, {
                 method: 'PUT',
-                headers: { 'Authorization': `Bearer ${access_token}` },
+                headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
             });
 
             document.querySelector("#volume").innerText = `< ${newPercent} % >`
@@ -224,9 +281,9 @@ const setVolume = async (access_token, diff, newPercent=null ) =>
     else { console.log(`setVolume(): ${CONSTS.inactivePlayer}`); }
 }
 
-const skipTrack = async (access_token, next=true) =>
+const skipTrack = async (next=true) =>
 {
-    let _json = await getDeviceJSON(access_token)
+    let _json = await getDeviceJSON()
     console.log("is_active", _json, _json['is_active'])
 
     if (_json['is_active'])
@@ -235,27 +292,27 @@ const skipTrack = async (access_token, next=true) =>
         if(!next) { endpoint = 'previous' }
         fetch(`https://api.spotify.com/v1/me/player/${endpoint}`, {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${access_token}` },
+            headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
         });
 
         // Update the 'currently playing' indicator
         // after a short wait to avoid the previous song being fetched
         await new Promise(r => setTimeout(r, 1000));
-        await getCurrentTrack(access_token);
+        await getCurrentTrack();
     }
     else { console.log(`skipTrack(): ${CONSTS.inactivePlayer}`); }
 }
 
 //****** JSON Fetches  *********/
 
-const getPlaylistJSON = async (access_token, name, debug=false) =>
+const getPlaylistJSON = async (name, debug=false) =>
 // Return the JSON object corresponding to the given playlist
 {
-    console.log(`Token ${access_token}`)
+    console.log(`Token ${getCookiesAsJSON().access_token}`)
 
     let res = await fetch('https://api.spotify.com/v1/me/playlists', {
         method: 'GET',
-        headers: { 'Authorization': `Bearer ${access_token}` },
+        headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
     });
     
     body = await res.text();
@@ -275,12 +332,12 @@ const getPlaylistJSON = async (access_token, name, debug=false) =>
     return null;
 }
 
-const getDeviceJSON = async (access_token, debug=false) =>
+const getDeviceJSON = async (debug=false) =>
 // async functions always return a Promise for their return value
 {
     let res = await fetch('https://api.spotify.com/v1/me/player/devices', {
         method: 'GET',
-        headers: { 'Authorization': `Bearer ${access_token}` },
+        headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
     });
 
     body = await res.text();
@@ -299,12 +356,12 @@ const getDeviceJSON = async (access_token, debug=false) =>
     return null;
 }
 
-const getPlayerJSON = async (access_token, debug=false) =>
+const getPlayerJSON = async (debug=false) =>
 {
     // The Content-Type header is only neccessary when sending data in the body
     let res = await fetch('https://api.spotify.com/v1/me/player', {
         method: 'GET',
-        headers: { 'Authorization': `Bearer ${access_token}` },
+        headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
     });
     
     // Instead of using a readable stream we can fetch the complete response body
@@ -322,13 +379,13 @@ const getPlayerJSON = async (access_token, debug=false) =>
 
 //********* MISC *********//
 
-const fetchTracks = async (access_token, playlistName, debug=false) => 
+const fetchTracks = async (playlistName, debug=false) => 
 {
-    playlist_json = await getPlaylistJSON(access_token, playlistName)
+    playlist_json = await getPlaylistJSON(playlistName)
 
     let res = await fetch(`https://api.spotify.com/v1/playlists/${playlist_json['id']}/tracks`, {
         method: 'GET',
-        headers: { 'Authorization': `Bearer ${access_token}` },
+        headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
     });
 
     body = await res.text()
@@ -363,5 +420,21 @@ const getParamDict = () =>
     let vals = param_str.split('&').map( (e) => [e.split('=')[1]]  ) 
     for (let i=0; i<keys.length; i++){ param_dict[keys[i]] = vals[i]; }
     
+    return param_dict;
+}
+
+const getCookiesAsJSON = () =>
+{
+    let param_dict = {};
+    for (obj of document.cookie.split("; "))
+    { 
+        let [key,val] = obj.split("=");
+        if (key == "expires_in")
+        {
+            param_dict[key] = parseInt(val);
+        }
+        else { param_dict[key] = val; }
+    }
+
     return param_dict;
 }
