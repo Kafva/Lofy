@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+const SERVER = "cloudify";
+
 //********* DEBUGGING **********/
 //		tshark -i en0 -Y "http.request || http.response" tcp port 443 or 80
 //		curl http://localhost:3443/callback?state=333&code=deadbeef
@@ -33,8 +35,8 @@ const runAsync = async () =>
 		// Fix invaid client-redirect on dev.spotify
 		token_endpoint: 'https://accounts.spotify.com/api/token',
 		auth_endpoint: 'https://accounts.spotify.com/authorize?',
-		base_uri: 'https://cloudify:3443',
-		redirect_uri: `https://cloudify:3443/callback`,
+		base_uri: `https://${SERVER}:3443`,
+		redirect_uri: `https://${SERVER}:3443/callback`,
 
 		// Authorizations required by the app
 		// https://developer.spotify.com/documentation/general/guides/scopes/

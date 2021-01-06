@@ -11,39 +11,45 @@
         <% if (typeof title == 'undefined') { title = 'Cloudify'; } %>
         <h1><%= title %></h1>
 
-        <div class="clickable" id="pauseToggle">&lt; Play &gt;</div>
-        <div class="clickable" id="volumeUp">Volume up</div>
-        <div class="clickable" id="volumeDown">Volume down</div>
-        <div id="volume">&lt; - &gt;</div>
-        <div id="currentTrack">Current track: - </div>
-        <div class="clickable" id="previous">&lt;&lt;</div>
-        <div class="clickable" id="next">&gt;&gt;</div>
-        
-        <hr/>
-            <div class="clickable" id="playerInfo">Player Info</div>
-            <div class="clickable" id="playlist">Playlist</div>
-            <div class="clickable" id="devices">Devices</div>
-        <hr/>
-            <div id="debugSpace"></div>
-        <hr/>
-        <ul id="params">
-        </ul>
-        
-        <!-- Functions + Constants -->
-        <script src="clientConstants.js"></script>
-        <script src="clientFunctions.js"></script>
-        <script src="spotifyFunctions.js"></script>
+        <% if (title == "/home") 
+        { %> 
+            <select id="selectedPlaylist">
+            </select>
 
-       <!-- Dummy audio player -->
-        <audio id="dummy" controls loop>
-            <source src="resc/silence.m4a" type="audio/x-m4a"/>
-        </audio> 
+            <div class="clickable" id="pauseToggle">&lt; Play &gt;</div>
+            <div class="clickable" id="volumeUp">Volume up</div>
+            <div class="clickable" id="volumeDown">Volume down</div>
+            <div id="volume">&lt; - &gt;</div>
+            <div id="currentTrack">Current track: - </div>
+            <div class="clickable" id="previous">&lt;&lt;</div>
+            <div class="clickable" id="next">&gt;&gt;</div>
+            
+            <hr/>
+                <div class="clickable" id="playerInfo">Player Info</div>
+                <div class="clickable" id="playlist">Playlist</div>
+                <div class="clickable" id="devices">Devices</div>
+            <hr/>
+                <div id="debugSpace"></div>
+            <hr/>
+            <ul id="params">
+            </ul>
+            
+            <!-- Functions + Constants -->
+            <script src="clientConstants.js"></script>
+            <script src="clientFunctions.js"></script>
+            <script src="spotifyFunctions.js"></script>
 
-        <!-- Spotify CDN -->
-        <script src="https://sdk.scdn.co/spotify-player.js"></script>
+            <!-- Dummy audio player -->
+            <audio id="dummy" controls loop>
+                <source src="resc/silence.m4a" type="audio/x-m4a"/>
+            </audio> 
 
-        <!-- Main script -->
-        <script src="client.js"></script>
+            <!-- Spotify CDN -->
+            <script src="https://sdk.scdn.co/spotify-player.js"></script>
+
+            <!-- Main script -->
+            <script src="client.js"></script>
+        <% } %>
     </body>
 
 </html>

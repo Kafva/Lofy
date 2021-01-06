@@ -37,6 +37,12 @@ window.onSpotifyWebPlaybackSDKReady = () =>
 
         // Initiate the mediakey handlers
         mediaHandlers();
+
+        // Setup the listener for the playlist <select>
+        document.querySelector("#selectedPlaylist").addEventListener('change', () => 
+        { 
+            startPlayer( getCurrentPlaylistName(), player ) 
+        });
     }
 };
 

@@ -65,6 +65,14 @@ const InitPlayer = async (player) =>
     
     // Set volume to <default> %
     setVolume(-1, CONSTS.defaultPercent);
+
+    // Fetch the users playlists and add them as options in the UI
+    let playlists = await getPlaylistJSON(name=false);
+    for (let item of playlists)
+    {
+        let opt = document.createElement("option"); opt.innerText = item['name'];
+        document.querySelector("#selectedPlaylist").add(opt);
+    }
 }
 
 const startPlayer = async (playlistName, player) => 
@@ -208,6 +216,7 @@ const skipTrack = async (next=true) =>
 
 const getPlaylistJSON = async (name, debug=false) =>
 // Return the JSON object corresponding to the given playlist
+// Or the base JSON with all playlists if no name is given
 {
     console.log(`Token ${getCookiesAsJSON().access_token}`)
 
@@ -222,15 +231,18 @@ const getPlaylistJSON = async (name, debug=false) =>
     try { playlists = JSON.parse(body)['items'];  }
     catch (e) { console.error(e,devices); return null; }
 
-    for (let item of playlists)
+    if (name != false)
     {
-        if (item['name'] == name)
+        for (let item of playlists)
         {
-            if (debug) { document.querySelector('#debugSpace').innerText = JSON.stringify(item); }
-            return item;
-        }   
+            if (item['name'] == name)
+            {
+                if (debug) { document.querySelector('#debugSpace').innerText = JSON.stringify(item); }
+                return item;
+            }   
+        }
     }
-    return null;
+    else { return playlists; }
 }
 
 const getDeviceJSON = async (debug=false) =>
@@ -277,22 +289,3 @@ const getPlayerJSON = async (debug=false) =>
     if (debug) { document.querySelector('#debugSpace').innerText = JSON.stringify(body); }
     return body;
 }
-
-const fetchTracks = async (playlistName, debug=false) => 
-{
-    playlist_json = await getPlaylistJSON(playlistName)
-
-    let res = await fetch(`https://api.spotify.com/v1/playlists/${playlist_json['id']}/tracks`, {
-        method: 'GET',
-        headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
-    });
-
-    body = await res.text()
-    
-    try { tracks = JSON.parse(body);  }
-    catch (e) { console.error(e,tracks); return null; }
-
-    if (debug) { document.querySelector('#debugSpace').innerText = JSON.stringify(tracks); }
-    return tracks;
-}
-

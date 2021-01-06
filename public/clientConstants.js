@@ -3,7 +3,7 @@ const CONSTS = {
     defaultPercent: 20,
     playerName: 'Cloudify Player',
     inactivePlayer: 'Player inactive',
-    playlistName: '🌙',
+    localFilesPath: './local/',
     pauseText: '< Pause >',
     playText: '< Play >',
     newTrackDelay: 1500,

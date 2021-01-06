@@ -1,10 +1,13 @@
+// Note that Secure-DNS in Brave bypasses the resolution of domain names sent out by pi.hole
+
 // TODO
-//  * Media key support (across all sources)
+//  * Fix it so that one can go directly to /home 
 //  ### Spotify
-//      * Pick playlist
 //  ### Local files
 //      * ~/Music/iTunes/iTunes\ Media/Music
+//      * music-metadata
 //  ### Soundcloud
+//      * Currently not avaialable: https://soundcloud.com/you/apps/new
 //  ### Front-end
 
 //********** EVENT HANDLING ******************/
@@ -158,14 +161,14 @@ const clickHandler = (player) =>
     switch (event.target.id)
     {
         case 'play':
-            startPlayer(CONSTS.playlistName, player); 
+            startPlayer( getCurrentPlaylistName(), player); 
             break;
         case 'devices':
             getDeviceJSON(debug=true); 
             break;
         //-- Requires player to be active --//
         case 'pauseToggle':
-            togglePlayback(CONSTS.playlistName, player); 
+            togglePlayback( getCurrentPlaylistName(), player); 
             break;
         case 'volumeUp':
             setVolume(CONSTS.volumeStep);
@@ -183,10 +186,6 @@ const clickHandler = (player) =>
         case 'playerInfo':
             getPlayerJSON(debug=true);
             break;
-        case 'playlist':
-            fetchTracks(CONSTS.playlistName);
-            break;
-
     }
 }
 
@@ -264,3 +263,5 @@ const getCookiesAsJSON = () =>
 
     return param_dict;
 }
+
+const getCurrentPlaylistName = () => document.querySelector("#selectedPlaylist").selectedOptions[0].innerText;

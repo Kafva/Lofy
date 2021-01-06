@@ -12,7 +12,7 @@
     "fastify-cors": "^4.1.0",
     "fastify-session": "^5.0.0",
     "fastify-static": "^3.2.0",
-    "nodemon": "^2.0.4",
+    "music-metadata": "^7.6.2",
     "point-of-view": "^4.4.0",
     "request": "^2.88.2"
   },
