@@ -11,8 +11,7 @@
         <% if (typeof title == 'undefined') { title = 'Cloudify'; } %>
         <h1><%= title %></h1>
 
-        <div class="clickable" id="play">Play 🌙</div>
-        <div class="clickable" id="pauseToggle">&lt; - &gt;</div>
+        <div class="clickable" id="pauseToggle">&lt; Play &gt;</div>
         <div class="clickable" id="volumeUp">Volume up</div>
         <div class="clickable" id="volumeDown">Volume down</div>
         <div id="volume">&lt; - &gt;</div>
@@ -29,13 +28,19 @@
         <hr/>
         <ul id="params">
         </ul>
+        
+        <!-- Functions + Constants -->
+        <script src="clientConstants.js"></script>
+        <script src="clientFunctions.js"></script>
+        <script src="spotifyFunctions.js"></script>
+
+       <!-- Dummy audio player -->
+        <audio id="dummy" controls loop>
+            <source src="resc/silence.m4a" type="audio/x-m4a"/>
+        </audio> 
 
         <!-- Spotify CDN -->
         <script src="https://sdk.scdn.co/spotify-player.js"></script>
-
-        <!-- Functions + Constants -->
-        <script src="clientFunctions.js"></script>
-        <script src="clientConstants.js"></script>
 
         <!-- Main script -->
         <script src="client.js"></script>
