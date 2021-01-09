@@ -1,14 +1,14 @@
 window.onSpotifyWebPlaybackSDKReady = () => 
 {
-    // Note that the Spotify Web API doesn't work in 'insecure' contexts (i.e. HTTP) in Chromium
-        
-    // If uBlock is enabled several errors akin to
-    //      "Cross-Origin Request Blocked: The Same Origin Policy disallows reading 
-    //      the remote resource at https://api.spotify.com/v1/melody/v1/logging/track_stream_verification"
-    // will be displayed when skipping a song due to content blocking of spotify
-
     if (document.location.href.match("/home"))
     {
+        // Note that the Spotify Web API doesn't work in 'insecure' contexts (i.e. HTTP) in Chromium
+            
+        // If uBlock is enabled several errors akin to
+        //      "Cross-Origin Request Blocked: The Same Origin Policy disallows reading 
+        //      the remote resource at https://api.spotify.com/v1/melody/v1/logging/track_stream_verification"
+        // will be displayed when skipping a song due to content blocking of spotify
+
         // https://developer.spotify.com/documentation/web-playback-sdk/reference/#objects
         // Create a "Web Playback" object which can be chosen as the device to stream music to
         // (initalised through including a script on the main page)
@@ -18,9 +18,9 @@ window.onSpotifyWebPlaybackSDKReady = () =>
         });
         
         // Before interacting with (most) API endpoints we need to 'activate' the player (see status from /devices)
-        // the listener for 'ready' will trigger `InitPlayer()` to activate it and set shuffle + default volume
+        // the listener for 'ready' will trigger `InitSpotifyPlayer()` to activate it and set shuffle + default volume
         addPlayerListeners(player);
-       
+        
         // Connect the player
         player.connect();
 
@@ -31,41 +31,30 @@ window.onSpotifyWebPlaybackSDKReady = () =>
         // Initiate timer for sending a request to /refresh to get a new access_token
         refreshToken(player);
 
-        // Setup listeners for the dummy <audio> 
-        document.querySelector("#dummy").onplay  = dummyAudioHandler('playing');
-        document.querySelector("#dummy").onpause = dummyAudioHandler('paused');
-
         // Initiate the mediakey handlers
         mediaHandlers();
 
-        // Setup the listener for the playlist <select>
-        document.querySelector("#selectedPlaylist").addEventListener('change', () => 
+        // Setup the listener for the spotify and local playlist <select> elements
+        document.querySelector("#spotifyPlaylist").addEventListener('change', async () => 
         { 
-            startPlayer( getCurrentPlaylistName(), player ) 
+            // Set the global track counter
+            GLOBALS.spotify_playlist_count = ( await getPlaylistJSON( getCurrentSpotifyPlaylist() ) ).tracks.total;
+
+            startPlayer( getCurrentSpotifyPlaylist(), player ) 
         });
-    }
-};
 
-
-if (document.location.href.match("/test"))
-{
-    window.onload = () =>
-    {
-        //**********************************/
-        var a = new Audio();
-        s = document.createElement("source");
-        //s.type = "audio/mpeg";
-        s.src = "/audio/lain/1"
-        //s.src = "./resc/test.mp3"
+        // Setup listeners for the dummy <audio> 
+        document.querySelector("#dummy").onplay  = dummyAudioHandler('playing');
+        document.querySelector("#dummy").onpause = dummyAudioHandler('paused');
+    };
         
-        a.appendChild(s);
-        a.setAttribute("controls", "");
-        console.log(a);
-        document.body.appendChild(a);
-        a.onload = (evt) => URL.revokeObjectURL(blob_url);
-        a.load();
-        //**********************************/
-    }
+    //****** Local Player **********/        
+    setLocalPlaylistOptions();
+    InitLocalPlayer();
+
+    document.querySelector("#localPlaylist").addEventListener('change', () => 
+    { 
+        // Set the global track counter
+        updateLocalPlaylistCount();
+    });
 }
-
-

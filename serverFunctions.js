@@ -5,7 +5,6 @@
 const { orderTags } = require("music-metadata/lib/core");
 const queryString = require('querystring');
 const request = require('request');
-
 const mm = require('music-metadata');
 
 // NOTE that some `fs.` functions like `createReadStream` lack an async equivelent, it is therefore

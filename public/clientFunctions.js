@@ -170,14 +170,14 @@ const clickHandler = (player) =>
     switch (event.target.id)
     {
         case 'play':
-            startPlayer( getCurrentPlaylistName(), player); 
+            startPlayer( getCurrentSpotifyPlaylist(), player); 
             break;
         case 'devices':
             getDeviceJSON(debug=true); 
             break;
         //-- Requires player to be active --//
         case 'pauseToggle':
-            togglePlayback( getCurrentPlaylistName(), player); 
+            togglePlayback( getCurrentSpotifyPlaylist(), player); 
             break;
         case 'volumeUp':
             setVolume(CONSTS.volumeStep);
@@ -222,7 +222,7 @@ const addPlayerListeners = (player) =>
     player.addListener('ready', ({ device_id }) => 
     { 
         console.log('Ready with Device ID', device_id);
-        InitPlayer(player);
+        InitSpotifyPlayer(player);
     });
 
     // Not Ready
@@ -273,14 +273,87 @@ const getCookiesAsJSON = () =>
     return param_dict;
 }
 
-const getCurrentPlaylistName = () => document.querySelector("#selectedPlaylist").selectedOptions[0].innerText;
+const getCurrentSpotifyPlaylist = () => document.querySelector("#spotifyPlaylist").selectedOptions[0].innerText;
+const getCurrentLocalPlaylist   = () => document.querySelector("#localPlaylist").selectedOptions[0].innerText;
 
 //******** LOCAL FILES **********/
-
 // Local playlists are defined using text files under ./playlists/<...>.txt with
-// each line containing the path to a sound file
+// each line containing the path to a sound file (anywhere on the server)
 
-//const setPlaylist = (name) => 
-//{
-//    document.querySelector("#localPlayer").src
-//}
+// The client can fetch track audio from /audio/<playlist>/<trackNum>
+// And metadata for each playlist (and all tracks within it) via /playlists
+
+const getLocalPlaylistJSON = async () =>
+{
+    // [ { 
+    //     name: <...>, 
+    //     count: <...> 
+    //     tracks: [
+    //         {
+    //             id: <...>,
+    //             title: <...>,
+    //             duration: <...>
+    //         }
+    //     ]
+    //   }, ... 
+    // ]
+    res  = await fetch("/playlists");
+    body = await res.text();
+    return JSON.parse(body);
+}
+
+const setLocalPlaylistOptions = async () =>
+{
+    playlists = await getLocalPlaylistJSON();
+
+    for (playlist of playlists)
+    {
+        let opt = document.createElement("option"); 
+        opt.innerText = playlist.name;
+        document.querySelector("#localPlaylist").add(opt);
+    }
+}
+
+const audioSourceCoinflip = () =>
+// Returns a random (weighted based on the number of tracks from each source) 
+// entry from CONSTS.audioSources to determine from which source 
+// the next track will be picked from
+{
+    // The counts are updated whenever the user switches to a new playlist
+    // and upon running InitSpotifyPlayer()
+
+    if ( GLOBALS.local_playlist_count == null )
+    {
+        x=1;
+    }
+}
+
+const InitLocalPlayer = () =>
+{
+    let p = document.querySelector("#localPlayer");
+    p.volume = CONSTS.defaultPercent / 100;
+    updateLocalPlaylistCount();
+}
+
+const updateLocalPlaylistCount = async () =>
+{
+    playlists = await getLocalPlaylistJSON(); 
+    
+    for (let playlist of playlists)
+    {
+        if ( playlist.name == getCurrentLocalPlaylist() )
+        // Find the playlist corresponding to the current selection
+        {
+            GLOBALS.local_playlist_count = playlist.tracks.length; 
+            break;
+        }
+    }
+}
+
+const playTrack = async (trackNum) => 
+{
+    document.querySelector("#localSource").src = `/audio/${getCurrentLocalPlaylist()}/${trackNum}`
+    let p = document.querySelector("#localPlayer")
+    await p.load();
+    p.play();
+}

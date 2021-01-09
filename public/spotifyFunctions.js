@@ -41,7 +41,7 @@ const refreshToken = async (player) =>
     xhr.send();
 }
 
-const InitPlayer = async (player) =>
+const InitSpotifyPlayer = async (player) =>
 {
     // Activate the web player (without starting any music)
     await fetch(`https://api.spotify.com/v1/me/player`, {
@@ -55,7 +55,7 @@ const InitPlayer = async (player) =>
             'Authorization': `Bearer ${getCookiesAsJSON().access_token}`
         },
     });
-    await new Promise(r => setTimeout(r, 2000));
+    await new Promise(r => setTimeout(r, CONSTS.newTrackDelay));
     
     // Enable shuffle (after a wait to activate the player) 
     await fetch(`https://api.spotify.com/v1/me/player/shuffle?state=true&device_id=${player._options.id}`, {
@@ -68,18 +68,35 @@ const InitPlayer = async (player) =>
 
     // Fetch the users playlists and add them as options in the UI
     let playlists = await getPlaylistJSON(name=false);
+
+    // Determine the current playlist (if any)
+    let _json = await getPlayerJSON();
+    if (_json != undefined && _json != null)
+    {
+        playlist_url = _json.context.external_urls.spotify;
+    }
+
     for (let item of playlists)
     {
-        let opt = document.createElement("option"); opt.innerText = item['name'];
-        document.querySelector("#selectedPlaylist").add(opt);
+        let opt = document.createElement("option"); 
+        opt.innerText = item.name;
+        
+        // Set the current playlist as selected
+        if ( item.external_urls.spotify == playlist_url  ){ opt.setAttribute("selected",""); }
+        
+        document.querySelector("#spotifyPlaylist").add(opt);
     }
+
+    // Update the playlist track counter
+    GLOBALS.spotify_playlist_count = ( await getPlaylistJSON( getCurrentSpotifyPlaylist()) ).tracks.total;
 }
 
 const startPlayer = async (playlistName, player) => 
+// Note that we only enter this function when the player is inactive
 {
     // The URI supplied in the body for /play can reference a playlist, track etc.
     playlist_json = await getPlaylistJSON(playlistName);
-    
+
     // Start playback 
     await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${player._options.id}`, {
         method: 'PUT',

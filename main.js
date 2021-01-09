@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-
 const SERVER = "cloudify";
+const PORT = 3443;
 
 //********* DEBUGGING **********/
 //		tshark -i en0 -Y "http.request || http.response" tcp port 443 or 80
@@ -19,7 +19,7 @@ const runAsync = async () =>
 	//******* CONSTANTS ************/
 	const CONSTS = 
 	{
-		WEB_SERVICE_PORT: 3443,
+		WEB_SERVICE_PORT: PORT,
 		WEB_SERVICE_ADDR: '0.0.0.0',
 		STATE_STR_LENGTH: 16,
 		DIR_ROOT: 'public',
@@ -27,8 +27,8 @@ const runAsync = async () =>
 		// Fix invaid client-redirect on dev.spotify
 		token_endpoint: 'https://accounts.spotify.com/api/token',
 		auth_endpoint: 'https://accounts.spotify.com/authorize?',
-		base_uri: `https://${SERVER}:3443`,
-		redirect_uri: `https://${SERVER}:3443/callback`,
+		base_uri: `https://${SERVER}:${PORT}`,
+		redirect_uri: `https://${SERVER}:${PORT}/callback`,
 
 		// Authorizations required by the app
 		// https://developer.spotify.com/documentation/general/guides/scopes/

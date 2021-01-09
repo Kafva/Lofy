@@ -10,13 +10,15 @@
     <body>
         <% if (typeof title == 'undefined') { title = 'Cloudify'; } %>
         <h1><%= title %></h1>
+        
+        <select id="localPlaylist">
+        </select>
 
         <% if (title == "/home") 
-        { %> 
-            
-            <select id="selectedPlaylist">
+        { %>
+            <select id="spotifyPlaylist">
             </select>
-
+            
             <div class="clickable" id="pauseToggle">&lt; Play &gt;</div>
             <div class="clickable" id="volumeUp">Volume up</div>
             <div class="clickable" id="volumeDown">Volume down</div>
@@ -35,21 +37,26 @@
             <ul id="params">
             </ul>
             
-            <!-- Functions + Constants -->
-            <script src="clientConstants.js"></script>
-            <script src="clientFunctions.js"></script>
-            <script src="spotifyFunctions.js"></script>
-            
             <!-- Dummy audio player -->
             <audio id="dummy" controls loop>
                 <source src="resc/silence.m4a" type="audio/x-m4a">
             </audio> 
 
-            <!-- Spotify CDN -->
+            <!-- Spotify iframe injection script -->
             <script src="https://sdk.scdn.co/spotify-player.js"></script>
 
         <% } %>
         
+        <!-- Functions + Global configuration variables -->
+        <script src="clientGlobals.js"></script>
+        <script src="clientFunctions.js"></script>
+        <script src="spotifyFunctions.js"></script>
+        
+        <!-- Local file player -->
+        <audio id="localPlayer" controls>
+            <source id="localSource">
+        </audio> 
+
         <!-- Main script -->
         <script src="client.js"></script>
     </body>
