@@ -47,14 +47,14 @@ window.onSpotifyWebPlaybackSDKReady = () =>
 };
 
 
-if (!document.location.href.match("/home"))
+if (document.location.href.match("/test"))
 {
     window.onload = () =>
     {
         //**********************************/
         var a = new Audio();
         s = document.createElement("source");
-        s.type = "audio/mp3";
+        //s.type = "audio/mpeg";
         s.src = "/audio/lain/1"
         //s.src = "./resc/test.mp3"
         

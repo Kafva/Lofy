@@ -2,11 +2,12 @@
 //  * Fix it so that one can go directly to /home 
 //  * Rename refresh= parameter to 'textOnly'
 //  * Shuffle gets fcked when switching playlists
+//  * Server crashes sometimes when non-existant files are found in a playlist(?)
 //  ### Spotify
 //  ### Local files
+//      1. Begin work with combining local+spotify players
 //      * Translate emojis to text (https://www.npmjs.com/package/emoji-text OR port emoji.bash)
 //      * ~/Music/iTunes/iTunes\ Media/Music
-//      * music-metadata
 //  ### Soundcloud
 //      * Currently not avaialable: https://soundcloud.com/you/apps/new
 //  ### Front-end

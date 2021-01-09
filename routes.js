@@ -203,6 +203,11 @@ module.exports = (fastify,functions,CONSTS) =>
         res.view('/templates/index.ejs', { title: "/" })
     })
     
+    fastify.get('/test', (req, res) => 
+    {
+        res.view('/templates/index.ejs', { title: "/test" })
+    })
+    
     //******* LOCAL FILES ********/
     fastify.get('/playlists', async (req, res) =>
     {
@@ -214,6 +219,7 @@ module.exports = (fastify,functions,CONSTS) =>
     });
     
     fastify.get('/audio/:playlist/:trackNum', (req, res) => 
+    // The trackNum paramater starts from 1
     {
         functions.getTrackAudio(req,res);
     });

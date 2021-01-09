@@ -176,7 +176,8 @@ module.exports = (CONSTS) =>
             {
                 // Extract metadata from each track
                 if (track.length == 0) continue
-                let metadata = await getMusicMeta(track);
+                
+                metadata = await getMusicMeta(track);
                 
                 if ( metadata != null && metadata != undefined )
                 {
@@ -223,35 +224,40 @@ module.exports = (CONSTS) =>
         //     ]}, ... 
         // ]
        
+        local_playlists = await getLocalPlaylists();
         
-        //**************************************************************/
-        const stream = fs.createReadStream("/Users/jonas/Dropped/Music/Lain/Family Portrait-572937954.mp3");
-        return res.type('audio/mpeg').send(stream);
-        //**************************************************************/
+        if ( local_playlists.some( p => p.name == req.params.playlist ) )
+        {
+            track_count = await getLineCount( `${CONSTS.local_playlists_dir}/${req.params.playlist}.txt` );
 
-        
-        //local_playlists = await getLocalPlaylists();
-        
-        //if ( local_playlists.some( p => p.name == req.params.playlist ) )
-        //{
-        //    track_count = await getLineCount( `${CONSTS.local_playlists_dir}/${req.params.playlist}.txt` );
+            if ( parseInt(req.params.trackNum) <= track_count )
+            {
+                // Fetch the .trackNum line from the playlist text file with the path to the sound file
+                let tracks = (await fs.promises.readFile(`${CONSTS.local_playlists_dir}/${req.params.playlist}.txt`, 'utf-8')).toString().split('\n');
 
-        //    if ( parseInt(req.params.trackNum) <= track_count )
-        //    {
-        //        // TODO Determine the content-type of the perticular track
+                try
+                {
+                    stream = fs.createReadStream( tracks[ req.params.trackNum - 1 ] );
+                }
+                catch (e) { console.error(`getTrackAudio(): Can't find ${track[ req.params.trackNum - 1 ]}`); }
+                
+                // Determine the Content-type of the sound file
+                metadata = await getMusicMeta(  tracks[ req.params.trackNum - 1 ] );
+                
+                if (metadata.format.container.match(/M4A/i) )
+                {
+                    res.type('audio/x-m4a');
+                }
+                else { res.type('audio/mpeg'); }
 
-        //                                
-        //        // Create a pipe to the sound file on the server
-        //        // https://stackoverflow.com/questions/35549581/express-node-angular-sending-audio-file-to-front-end
-        //        // which the client can access
-
-        //        //let f = await fs.promises.readFile('./public/resc/test.mp3','binary');
-        //        //res.type("application/octet-stream");
-        //        //res.send(f);
-        //    }
-        //    else { errorRedirect(res, `'${req.params.playlist}' only has ${track_count} tracks`,refresh=true); }
-        //}
-        //else { errorRedirect(res, `No such playlist: ${req.params.playlist}`,refresh=true); }
+                // Send a readable stream with the audio,
+                // Client usage:
+                //  <audio src="/audio/[playlist]/[trackNum]>"
+                return res.send(stream);
+            }
+            else { errorRedirect(res, `'${req.params.playlist}' only has ${track_count} tracks`,refresh=true); }
+        }
+        else { errorRedirect(res, `No such playlist: ${req.params.playlist}`,refresh=true); }
 
     }
 

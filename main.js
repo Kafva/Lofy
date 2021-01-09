@@ -12,7 +12,7 @@ const SERVER = "cloudify";
 // To wait for the readFile() operation to complete we start
 // the app in an async function. To make it so that `fs.` functions return
 // awaitable promises we import the module as:
-const { promises: fs } = require("fs");
+const fs = require("fs");
 
 const runAsync = async () => 
 { 
@@ -35,11 +35,11 @@ const runAsync = async () =>
 		scope: 'playlist-read-private streaming user-read-private user-read-email user-modify-playback-state user-read-playback-state user-read-currently-playing',
 		state_cookie_key: 'spotify_auth_state',
 
-		client_id: 	   await fs.readFile("./secret/client_id", 'utf-8'), 
-		client_secret: await fs.readFile("./secret/client_secret", 'utf-8'),
+		client_id: 	   await fs.promises.readFile("./secret/client_id", 'utf-8'), 
+		client_secret: await fs.promises.readFile("./secret/client_secret", 'utf-8'),
 		
-		tls_key: 	   await fs.readFile("./secret/server.key", 'utf-8'),
-		tls_cert: 	   await fs.readFile("./secret/server.crt", 'utf-8'),
+		tls_key: 	   await fs.promises.readFile("./secret/server.key", 'utf-8'),
+		tls_cert: 	   await fs.promises.readFile("./secret/server.crt", 'utf-8'),
 
 		local_playlists_dir: "./playlists"
 	}
@@ -67,9 +67,6 @@ const runAsync = async () =>
 
 	const fastify_static = require('fastify-static');
 	
-	// Provides .warn() and .info() functions for the fastify object for easier debugging
-	fastify.register(require('fastify-log'));
-
 	// Set the static content directory root
 	// The register method allows the user to extend functionality with plugins. 
 	// A plugin can be a set of routes, a server decorator etc. in this case 
