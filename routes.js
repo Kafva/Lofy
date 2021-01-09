@@ -145,8 +145,7 @@ module.exports = (fastify,functions,CONSTS) =>
         // Use the URL parameters passed from STEP 2 
         // for access_token, refresh_token and expires_in on the client side
         // to make requests to the web API
-        
-        res.view('/templates/index.ejs', { title: "/home" })
+        res.view('/templates/index.ejs', { title: "/home" } );
     })
     
     //**** OAuth STEP 4 *****/
@@ -203,7 +202,21 @@ module.exports = (fastify,functions,CONSTS) =>
         //res.sendFile("index.html") 
         res.view('/templates/index.ejs', { title: "/" })
     })
-
+    
+    //******* LOCAL FILES ********/
+    fastify.get('/playlists', async (req, res) =>
+    {
+        // To play media from local playslists (interspersed with Spotify and/or seperatly) 
+        // the client will fetch a JSON object with each metadata for each playlist
+        // defined under ./playlists/<...>.txt
+        res.type("application/json");
+        res.send( await functions.getLocalPlaylists() );
+    });
+    
+    fastify.get('/audio/:playlist/:trackNum', (req, res) => 
+    {
+        functions.getTrackAudio(req,res);
+    });
 }
 
 

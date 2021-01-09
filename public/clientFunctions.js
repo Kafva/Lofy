@@ -1,14 +1,22 @@
-// Note that Secure-DNS in Brave bypasses the resolution of domain names sent out by pi.hole
-
 // TODO
 //  * Fix it so that one can go directly to /home 
+//  * Rename refresh= parameter to 'textOnly'
+//  * Shuffle gets fcked when switching playlists
 //  ### Spotify
 //  ### Local files
+//      * Translate emojis to text (https://www.npmjs.com/package/emoji-text OR port emoji.bash)
 //      * ~/Music/iTunes/iTunes\ Media/Music
 //      * music-metadata
 //  ### Soundcloud
 //      * Currently not avaialable: https://soundcloud.com/you/apps/new
 //  ### Front-end
+//      * basic cute look
+//      * Source indicator for current media
+//      * Sound wave thing
+//      * Optional display for all metadata
+//      * Mobile integration
+//      * Search function to play specific track(s) 
+//      * Repeat current track button
 
 //********** EVENT HANDLING ******************/
 
@@ -265,3 +273,13 @@ const getCookiesAsJSON = () =>
 }
 
 const getCurrentPlaylistName = () => document.querySelector("#selectedPlaylist").selectedOptions[0].innerText;
+
+//******** LOCAL FILES **********/
+
+// Local playlists are defined using text files under ./playlists/<...>.txt with
+// each line containing the path to a sound file
+
+//const setPlaylist = (name) => 
+//{
+//    document.querySelector("#localPlayer").src
+//}

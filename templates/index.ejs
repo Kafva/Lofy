@@ -13,6 +13,7 @@
 
         <% if (title == "/home") 
         { %> 
+            
             <select id="selectedPlaylist">
             </select>
 
@@ -38,18 +39,23 @@
             <script src="clientConstants.js"></script>
             <script src="clientFunctions.js"></script>
             <script src="spotifyFunctions.js"></script>
+            
+            <!-- Local file player -->
+            <audio id="localPlayer" controls loop>
+            </audio> 
 
             <!-- Dummy audio player -->
             <audio id="dummy" controls loop>
-                <source src="resc/silence.m4a" type="audio/x-m4a"/>
+                <source src="resc/silence.m4a" type="audio/x-m4a">
             </audio> 
 
             <!-- Spotify CDN -->
             <script src="https://sdk.scdn.co/spotify-player.js"></script>
 
-            <!-- Main script -->
-            <script src="client.js"></script>
         <% } %>
+        
+        <!-- Main script -->
+        <script src="client.js"></script>
     </body>
 
 </html>

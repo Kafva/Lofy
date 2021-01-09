@@ -46,3 +46,26 @@ window.onSpotifyWebPlaybackSDKReady = () =>
     }
 };
 
+
+if (!document.location.href.match("/home"))
+{
+    window.onload = () =>
+    {
+        //**********************************/
+        var a = new Audio();
+        s = document.createElement("source");
+        s.type = "audio/mp3";
+        s.src = "/audio/lain/1"
+        //s.src = "./resc/test.mp3"
+        
+        a.appendChild(s);
+        a.setAttribute("controls", "");
+        console.log(a);
+        document.body.appendChild(a);
+        a.onload = (evt) => URL.revokeObjectURL(blob_url);
+        a.load();
+        //**********************************/
+    }
+}
+
+

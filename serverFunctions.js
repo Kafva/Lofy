@@ -2,11 +2,26 @@
 // Since we assign a function to module.exports in this case we need to RETURN a dictionary
 // of the functions we define 
 
+const { orderTags } = require("music-metadata/lib/core");
 const queryString = require('querystring');
 const request = require('request');
 
+const mm = require('music-metadata');
+
+// NOTE that some `fs.` functions like `createReadStream` lack an async equivelent, it is therefore
+// preferable to import the plain `fs` module and use `fs.promises` explicitly
+//const { promises: fs.promises } = require("fs");
+const fs = require('fs');
+
+// Promisify exec()
+const util = require('util');
+const { send } = require("process");
+const exec = util.promisify(require('child_process').exec);
+
 module.exports = (CONSTS) => 
 {
+    //***** Unexported ******//
+
     const setCookie = (res, key, value) =>
     {
         res.setCookie( key, value, 
@@ -17,6 +32,21 @@ module.exports = (CONSTS) =>
         })
     }
     
+    const getLineCount = async (filePath) => 
+    // Get line count via `wc`
+    {
+        const { stdout } = await exec(`cat ${filePath} | wc -l`);
+        return parseInt(stdout);
+    };
+    
+    const getMusicMeta = async (filePath) => 
+    {
+        try  { return await mm.parseFile(filePath); } 
+        catch (err) { return; }
+    };
+    
+    //**** Exported ****//
+
     const getTokenParams = (body, refresh) =>
     {
         if ( body.access_token !== undefined && body.expires_in !== undefined && body.refresh_token !== undefined )
@@ -125,6 +155,105 @@ module.exports = (CONSTS) =>
         });
 
     }
+    
+    const getLocalPlaylists = async () =>
+    // Returns a list of JSON objects describing each playlist, each playlist will contain a list of the
+    // tracks within the playlist
+    {
+        local_playlists = [];
+        
+        for (let playlist of await fs.promises.readdir(CONSTS.local_playlists_dir))
+        {
+            // Extract each line (with the path to a sound file) from each playlist file 
+            let tracks = (await fs.promises.readFile(`${CONSTS.local_playlists_dir}/${playlist}`, 'utf-8')).toString().split('\n');
 
-    return { getTokenParams, errorRedirect, stateString, getAuthHeader, tokenRequest };
+            let tracks_meta = [];
+            
+            // The track_id corresponds to the line in the playlist file
+            let track_id = 1;
+
+            for (let track of tracks)
+            {
+                // Extract metadata from each track
+                if (track.length == 0) continue
+                let metadata = await getMusicMeta(track);
+                
+                if ( metadata != null && metadata != undefined )
+                {
+                    tracks_meta.push(
+                        {
+                            id: track_id,
+                            title: metadata.common.title || "Unknown",
+                            artist: metadata.common.artist || "Unknown",
+                            album: metadata.common.album || "Unknown",
+                            duraion: metadata.format.duration || 0
+                        }
+                    );
+                }
+                else { console.error(`getLocalPlaylists(): Can't parse metadata for ${track}`); }
+
+                // Incrment the track_id
+                track_id++;
+            }
+
+            local_playlists.push( 
+                { 
+                    name: playlist.split(".")[0],
+                    tracks: tracks_meta,
+                    count: tracks.length
+                }
+            );
+        }
+
+        return local_playlists;
+    }
+
+    const getTrackAudio = async (req, res) =>
+    {
+        // req.params       ==> { playlist: <...>, trackNum: <...> }
+        // local_playlists  ==> [ { 
+        //     name: <...>, 
+        //     count: <...> 
+        //     tracks: [
+        //         {
+        //             id: <...>,
+        //             title: <...>,
+        //             duration: <...>
+        //         }
+        //     ]}, ... 
+        // ]
+       
+        
+        //**************************************************************/
+        const stream = fs.createReadStream("/Users/jonas/Dropped/Music/Lain/Family Portrait-572937954.mp3");
+        return res.type('audio/mpeg').send(stream);
+        //**************************************************************/
+
+        
+        //local_playlists = await getLocalPlaylists();
+        
+        //if ( local_playlists.some( p => p.name == req.params.playlist ) )
+        //{
+        //    track_count = await getLineCount( `${CONSTS.local_playlists_dir}/${req.params.playlist}.txt` );
+
+        //    if ( parseInt(req.params.trackNum) <= track_count )
+        //    {
+        //        // TODO Determine the content-type of the perticular track
+
+        //                                
+        //        // Create a pipe to the sound file on the server
+        //        // https://stackoverflow.com/questions/35549581/express-node-angular-sending-audio-file-to-front-end
+        //        // which the client can access
+
+        //        //let f = await fs.promises.readFile('./public/resc/test.mp3','binary');
+        //        //res.type("application/octet-stream");
+        //        //res.send(f);
+        //    }
+        //    else { errorRedirect(res, `'${req.params.playlist}' only has ${track_count} tracks`,refresh=true); }
+        //}
+        //else { errorRedirect(res, `No such playlist: ${req.params.playlist}`,refresh=true); }
+
+    }
+
+    return { getTokenParams, errorRedirect, stateString, getAuthHeader, tokenRequest, getLocalPlaylists, getTrackAudio };
 };
