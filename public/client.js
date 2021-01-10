@@ -16,7 +16,7 @@ window.onSpotifyWebPlaybackSDKReady = () =>
             name: CONSTS.playerName,
             getOAuthToken: cb => { cb( getCookiesAsJSON().access_token  ); }
         });
-        
+       
         // Before interacting with (most) API endpoints we need to 'activate' the player (see status from /devices)
         // the listener for 'ready' will trigger `InitSpotifyPlayer()` to activate it and set shuffle + default volume
         addPlayerListeners(player);
@@ -36,11 +36,10 @@ window.onSpotifyWebPlaybackSDKReady = () =>
 
         // Setup the listener for the spotify and local playlist <select> elements
         document.querySelector("#spotifyPlaylist").addEventListener('change', async () => 
-        { 
+        {
             // Set the global track counter
-            GLOBALS.spotify_playlist_count = ( await getPlaylistJSON( getCurrentSpotifyPlaylist() ) ).tracks.total;
-
-            startPlayer( getCurrentSpotifyPlaylist(), player ) 
+            updatePlaylistCount(SPOTIFY_SOURCE);
+            playSpotifyTrack( CONSTS.audioSources.spotify.getCurrentPlaylist(), player ) 
         });
 
         // Setup listeners for the dummy <audio> 
@@ -55,6 +54,6 @@ window.onSpotifyWebPlaybackSDKReady = () =>
     document.querySelector("#localPlaylist").addEventListener('change', () => 
     { 
         // Set the global track counter
-        updateLocalPlaylistCount();
+        updatePlaylistCount(LOCAL_SOURCE);
     });
 }

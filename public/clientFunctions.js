@@ -1,9 +1,12 @@
 // TODO
+//  * Fix copying of modules into public/modules
 //  * Fix it so that one can go directly to /home 
 //  * Rename refresh= parameter to 'textOnly'
 //  * Shuffle gets fcked when switching playlists
 //  * Server crashes sometimes when non-existant files are found in a playlist(?)
 //  ### Spotify
+//      * seek (https://developer.spotify.com/documentation/web-api/reference/player/seek-to-position-in-currently-playing-track/)
+//      * Cache playlist-tracks fetch
 //  ### Local files
 //      1. Begin work with combining local+spotify players
 //      * Translate emojis to text (https://www.npmjs.com/package/emoji-text OR port emoji.bash)
@@ -18,6 +21,8 @@
 //      * Mobile integration
 //      * Search function to play specific track(s) 
 //      * Repeat current track button
+
+// When we exit and re-enter silence may be playing
 
 //********** EVENT HANDLING ******************/
 
@@ -48,11 +53,17 @@ const keyboardHandler = (event, player) =>
             case CONSTS.previous:
                 skipTrack(next=false);
                 break;
+            case CONSTS.seekForward:
+                seekPlayback(CONSTS.seekStep);
+                break;
+            case CONSTS.seekBack:
+                seekPlayback(-CONSTS.seekStep);
+                break;
         }
     }
 }
 
-//**** Media keys *****/
+//**** MEDIA KEYS *****/
 // The spotify <iframe> contains the actual web player and its own mediaSession object which we can't access due to SOP
 // https://github.com/spotify/web-playback-sdk/issues/105
 // https://stackoverflow.com/questions/25098021/securityerror-blocked-a-frame-with-origin-from-accessing-a-cross-origin-frame
@@ -88,26 +99,54 @@ const updatePlayerStatus = (mode) =>
 const setupMediaMetadata = async () =>
 // Setup metadata for mediaSession
 {
-    let _json = await getPlayerJSON();
-    if (_json != undefined && _json != null)
+    if (GLOBALS.currentSource == SPOTIFY_SOURCE)
     {
-        artwork = [];
-        for (let item of _json['item']['album']['images'])
+        let _json = await getPlayerJSON();
+        if (_json != undefined)
         {
-            artwork.push( { 
-                src: item.url, 
-                sizes: `${item.width}x${item.height}`, 
-                type: 'image/png' 
+            artwork = [];
+            for (let item of _json['item']['album']['images'])
+            {
+                artwork.push( { 
+                    src: item.url, 
+                    sizes: `${item.width}x${item.height}`, 
+                    type: 'image/png' 
+                });
+            } 
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: _json['item'].name,
+                artist: _json['item']['artists'][0].name,
+                album: _json['item']['album'].name,
+                artwork: artwork
             });
-        } 
-        navigator.mediaSession.metadata = new MediaMetadata({
-            title: _json['item'].name,
-            artist: _json['item']['artists'][0].name,
-            album: _json['item']['album'].name,
-            artwork: artwork
-        });
+        }
+        else { console.error(`setupMediaMetadata(): getPlayerJSON() ==> ${_json}`); }
     }
-    else { console.error(`setupMediaMetadata(): getPlayerJSON() ==> ${_json}`); }
+    else if ( GLOBALS.currentSource == LOCAL_SOURCE )
+    {
+        let playlist = await getLocalPlaylistJSON( CONSTS.audioSources.local.getCurrentPlaylist() );
+        if (playlist != undefined && playlist != [])
+        {
+            trackIndex = GLOBALS.prevNum.local - 1;
+            let track = playlist.tracks[trackIndex];
+
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: track.title,
+                artist: track.artist,
+                album: track.album,
+                artwork: [
+                    {
+                        src: `/cover/${ CONSTS.audioSources.local.getCurrentPlaylist() }/${trackIndex}`,
+                        sizes: `${track.cover.width || 0}x${track.cover.height || 0}`,
+                        type: `image/${track.cover.type || 'png'}`
+                    }
+                ] 
+            });
+        }
+        else { console.error(`setupMediaMetadata(): getLocalPlaylistJSON ==> ${playlists}`); }
+
+    }
+    
 }
 
 const mediaHandlers = () =>
@@ -170,14 +209,14 @@ const clickHandler = (player) =>
     switch (event.target.id)
     {
         case 'play':
-            startPlayer( getCurrentSpotifyPlaylist(), player); 
+            playSpotifyTrack( CONSTS.audioSources.spotify.getCurrentPlaylist(), player); 
             break;
         case 'devices':
             getDeviceJSON(debug=true); 
             break;
         //-- Requires player to be active --//
         case 'pauseToggle':
-            togglePlayback( getCurrentSpotifyPlaylist(), player); 
+            togglePlayback( CONSTS.audioSources.spotify.getCurrentPlaylist(), player); 
             break;
         case 'volumeUp':
             setVolume(CONSTS.volumeStep);
@@ -191,6 +230,13 @@ const clickHandler = (player) =>
         case 'next':
             skipTrack();
             break;
+        case 'seekForward':
+            seekPlayback(CONSTS.seekStep);
+            break;
+        case 'seekBack':
+            seekPlayback(-CONSTS.seekStep);
+            break;
+
         //-- Debug ---//
         case 'playerInfo':
             getPlayerJSON(debug=true);
@@ -211,11 +257,58 @@ const addPlayerListeners = (player) =>
     // Playback status updates
     player.addListener('player_state_changed', state => 
     { 
+        // We cannot fetch the currenly queued tracks via the API, the best we can do for now
         console.log('player_state_changed', state); 
-        
-        // Update the current track and mediaSession metadata
-        getCurrentTrack();
-        setupMediaMetadata();
+
+        if ( GLOBALS.currentSource == SPOTIFY_SOURCE )
+        {
+            (async () =>
+            {
+                track = await getCurrentTrack();
+            
+                if ( track.item.uri == CONSTS.spotifySilence )
+                // Check if we are currently listening to 'silence'
+                {
+                    console.log(`THIS IS ${track.item.name}`);
+                    
+                    if ( GLOBALS.mutexTaken == false)
+                    // Ensure that no other 'player_state_change' event is in the
+                    // process of starting a new track
+                    {
+                        GLOBALS.mutexTaken = true;
+                        console.log("Mutex taken!");
+
+                        switch ( audioSourceCoinflip() )
+                        {
+                            case SPOTIFY_SOURCE:
+                                playSpotifyTrack( CONSTS.audioSources.spotify.getCurrentPlaylist(), player );    
+                                break;
+                            case LOCAL_SOURCE:
+                                // Pause Spotify and start playing from the local source
+                                await fetch(`https://api.spotify.com/v1/me/player/pause`, {
+                                    method: 'PUT',
+                                    headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
+                                });
+                                playTrack(); 
+                        }
+
+                        // Short wait before releasing the mutex
+                        await new Promise(r => setTimeout(r, CONSTS.newTrackDelay));
+                        GLOBALS.mutexTaken = false;
+                        console.log("Mutex released!");
+                    }
+                }
+                else
+                {
+                    // Update the current track and mediaSession metadata
+                    updateCurrentTrackUI();
+                    setupMediaMetadata();
+                }
+
+            })();
+
+        }
+
     });
 
     // Ready
@@ -227,6 +320,70 @@ const addPlayerListeners = (player) =>
 
     // Not Ready
     player.addListener('not_ready', ({ device_id }) => { console.log('Device ID has gone offline', device_id); });
+}
+
+//******** AUDIO SOURCE MANAGMENT *********/
+
+const updatePlaylistCount = async (audioSource) =>
+{
+    switch ( audioSource )
+    {
+        case SPOTIFY_SOURCE:
+            let _json =  await getPlaylistJSON( CONSTS.audioSources.spotify.getCurrentPlaylist());
+            if (_json != null && _json != undefined)
+            {
+                GLOBALS.playlistCount.spotify = _json.tracks.total; 
+            }
+            break;
+        case LOCAL_SOURCE:
+            await updateLocalPlaylistCount();
+            break;
+        default:
+            console.error(`Unknown audioSource: ${audioSource}`);
+    }
+
+    if ( GLOBALS.playlistCount[audioSource] == null && 
+        CONSTS.audioSources[audioSource].getCurrentPlaylist() != CONSTS.noContextOption )
+    { 
+        console.error(`Failed to update ${audioSource} count`); 
+    }
+}
+
+const audioSourceCoinflip = () =>
+// Returns a random (weighted based on the number of tracks from each source) 
+// key from CONSTS.audioSources to determine from which source 
+// the next track will be picked from
+{
+    // Spotify counter is updated in:
+    //  - Upon 'change' of #spotifyPlaylist
+    //  - InitSpotifyPlayer()
+    // Local counter is updated in:
+    //  - Upon 'change' of #localPlaylist
+    //  - InitLocalPlayer()
+
+    let total_tracks = 0;
+    
+    for (let source of Object.keys( CONSTS.audioSources ) )
+    // Ensure that each playlist has a count and sum up the total number of tracks
+    {
+        if ( GLOBALS.playlistCount[source] == null ) { updatePlaylistCount(source); }
+        total_tracks += GLOBALS.playlistCount[source];
+    }
+
+    // The algorithm will give a fair disrubtion where every track has the same
+    // likliehood to play (1/250 in the example below):
+    
+    // [0,199  ]   ==> spotify (200 tracks)
+    // [200,250]   ==> local   (50 tracks)
+
+    let outcome = Math.floor( Math.random() *  total_tracks )
+    let _total = 0;
+    
+    for (let source of Object.keys( CONSTS.audioSources ) )
+    {
+        _total += GLOBALS.playlistCount[source];
+        if ( outcome <= _total ) { return source; }
+    }
 }
 
 //********* MISC *********//
@@ -271,89 +428,4 @@ const getCookiesAsJSON = () =>
     }
 
     return param_dict;
-}
-
-const getCurrentSpotifyPlaylist = () => document.querySelector("#spotifyPlaylist").selectedOptions[0].innerText;
-const getCurrentLocalPlaylist   = () => document.querySelector("#localPlaylist").selectedOptions[0].innerText;
-
-//******** LOCAL FILES **********/
-// Local playlists are defined using text files under ./playlists/<...>.txt with
-// each line containing the path to a sound file (anywhere on the server)
-
-// The client can fetch track audio from /audio/<playlist>/<trackNum>
-// And metadata for each playlist (and all tracks within it) via /playlists
-
-const getLocalPlaylistJSON = async () =>
-{
-    // [ { 
-    //     name: <...>, 
-    //     count: <...> 
-    //     tracks: [
-    //         {
-    //             id: <...>,
-    //             title: <...>,
-    //             duration: <...>
-    //         }
-    //     ]
-    //   }, ... 
-    // ]
-    res  = await fetch("/playlists");
-    body = await res.text();
-    return JSON.parse(body);
-}
-
-const setLocalPlaylistOptions = async () =>
-{
-    playlists = await getLocalPlaylistJSON();
-
-    for (playlist of playlists)
-    {
-        let opt = document.createElement("option"); 
-        opt.innerText = playlist.name;
-        document.querySelector("#localPlaylist").add(opt);
-    }
-}
-
-const audioSourceCoinflip = () =>
-// Returns a random (weighted based on the number of tracks from each source) 
-// entry from CONSTS.audioSources to determine from which source 
-// the next track will be picked from
-{
-    // The counts are updated whenever the user switches to a new playlist
-    // and upon running InitSpotifyPlayer()
-
-    if ( GLOBALS.local_playlist_count == null )
-    {
-        x=1;
-    }
-}
-
-const InitLocalPlayer = () =>
-{
-    let p = document.querySelector("#localPlayer");
-    p.volume = CONSTS.defaultPercent / 100;
-    updateLocalPlaylistCount();
-}
-
-const updateLocalPlaylistCount = async () =>
-{
-    playlists = await getLocalPlaylistJSON(); 
-    
-    for (let playlist of playlists)
-    {
-        if ( playlist.name == getCurrentLocalPlaylist() )
-        // Find the playlist corresponding to the current selection
-        {
-            GLOBALS.local_playlist_count = playlist.tracks.length; 
-            break;
-        }
-    }
-}
-
-const playTrack = async (trackNum) => 
-{
-    document.querySelector("#localSource").src = `/audio/${getCurrentLocalPlaylist()}/${trackNum}`
-    let p = document.querySelector("#localPlayer")
-    await p.load();
-    p.play();
 }

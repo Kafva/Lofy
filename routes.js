@@ -221,8 +221,15 @@ module.exports = (fastify,functions,CONSTS) =>
     fastify.get('/audio/:playlist/:trackNum', (req, res) => 
     // The trackNum paramater starts from 1
     {
-        functions.getTrackAudio(req,res);
+        functions.getTrackData(req,res);
     });
+
+    fastify.get('/cover/:playlist/:trackNum', (req, res) => 
+    // Returns the cover art for the specified track (the trackNum paramater starts from 1)
+    {
+        functions.getTrackData(req,res,cover=true);
+    });
+
 }
 
 

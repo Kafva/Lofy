@@ -6,6 +6,7 @@ const { orderTags } = require("music-metadata/lib/core");
 const queryString = require('querystring');
 const request = require('request');
 const mm = require('music-metadata');
+const sizeOf = require('buffer-image-size');
 
 // NOTE that some `fs.` functions like `createReadStream` lack an async equivelent, it is therefore
 // preferable to import the plain `fs` module and use `fs.promises` explicitly
@@ -177,16 +178,23 @@ module.exports = (CONSTS) =>
                 if (track.length == 0) continue
                 
                 metadata = await getMusicMeta(track);
+                cover = {};
                 
                 if ( metadata != null && metadata != undefined )
                 {
+                    if (metadata.common.picture != undefined)
+                    {
+                        cover = sizeOf( metadata.common.picture[0].data );
+                    }
+
                     tracks_meta.push(
                         {
                             id: track_id,
                             title: metadata.common.title || "Unknown",
                             artist: metadata.common.artist || "Unknown",
                             album: metadata.common.album || "Unknown",
-                            duraion: metadata.format.duration || 0
+                            duration: metadata.format.duration || 0,
+                            cover: cover
                         }
                     );
                 }
@@ -207,8 +215,8 @@ module.exports = (CONSTS) =>
 
         return local_playlists;
     }
-
-    const getTrackAudio = async (req, res) =>
+    
+    const getTrackData = async (req, res, cover=false) =>
     {
         // req.params       ==> { playlist: <...>, trackNum: <...> }
         // local_playlists  ==> [ { 
@@ -218,7 +226,15 @@ module.exports = (CONSTS) =>
         //         {
         //             id: <...>,
         //             title: <...>,
+        //             artist: <...>,
+        //             album: <...>,
         //             duration: <...>
+        //             cover:
+        //             {
+        //               width: <...>
+        //               height: <...>
+        //               type: <...>    
+        //             }
         //         }
         //     ]}, ... 
         // ]
@@ -238,27 +254,40 @@ module.exports = (CONSTS) =>
                 {
                     stream = fs.createReadStream( tracks[ req.params.trackNum - 1 ] );
                 }
-                catch (e) { console.error(`getTrackAudio(): Can't find ${track[ req.params.trackNum - 1 ]}`); }
+                catch (e) { console.error(`getTrackAudio(): Can't find ${tracks[ req.params.trackNum - 1 ]}`); }
                 
                 // Determine the Content-type of the sound file
                 metadata = await getMusicMeta(  tracks[ req.params.trackNum - 1 ] );
-                
-                if (metadata.format.container.match(/M4A/i) )
+                if (cover)
                 {
-                    res.type('audio/x-m4a');
+                    if ( metadata.common.picture != undefined )
+                    {
+                        if ( metadata.common.picture.length >= 1 )
+                        {
+                            res.type( metadata.common.picture[0].format);
+                        }
+                        res.send( metadata.common.picture[0].data );
+                    }
+                    else { errorRedirect(res,"No cover available", refresh=false); }
                 }
-                else { res.type('audio/mpeg'); }
+                else
+                {
+                    if (metadata.format.container.match(/M4A/i) )
+                    {
+                        res.type('audio/x-m4a');
+                    }
+                    else { res.type('audio/mpeg'); }
 
-                // Send a readable stream with the audio,
-                // Client usage:
-                //  <audio src="/audio/[playlist]/[trackNum]>"
-                return res.send(stream);
+                    // Send a readable stream with the audio,
+                    // Client usage:
+                    //  <audio src="/audio/[playlist]/[trackNum]>"
+                    return res.send(stream);
+                }
             }
             else { errorRedirect(res, `'${req.params.playlist}' only has ${track_count} tracks`,refresh=true); }
         }
         else { errorRedirect(res, `No such playlist: ${req.params.playlist}`,refresh=true); }
-
     }
 
-    return { getTokenParams, errorRedirect, stateString, getAuthHeader, tokenRequest, getLocalPlaylists, getTrackAudio };
+    return { getTokenParams, errorRedirect, stateString, getAuthHeader, tokenRequest, getLocalPlaylists, getTrackData };
 };

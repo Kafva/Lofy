@@ -57,8 +57,8 @@ const InitSpotifyPlayer = async (player) =>
     });
     await new Promise(r => setTimeout(r, CONSTS.newTrackDelay));
     
-    // Enable shuffle (after a wait to activate the player) 
-    await fetch(`https://api.spotify.com/v1/me/player/shuffle?state=true&device_id=${player._options.id}`, {
+    // Set auto-repeat state
+    await fetch(`https://api.spotify.com/v1/me/player/repeat?state=${CONSTS.defaultAutoRepeatState}&device_id=${player._options.id}`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
     });
@@ -67,40 +67,36 @@ const InitSpotifyPlayer = async (player) =>
     setVolume(-1, CONSTS.defaultPercent);
 
     // Fetch the users playlists and add them as options in the UI
-    let playlists = await getPlaylistJSON(name=false);
-
-    // Determine the current playlist (if any)
-    let _json = await getPlayerJSON();
-    if (_json != undefined && _json != null)
-    {
-        playlist_url = _json.context.external_urls.spotify;
-    }
-
-    for (let item of playlists)
-    {
-        let opt = document.createElement("option"); 
-        opt.innerText = item.name;
-        
-        // Set the current playlist as selected
-        if ( item.external_urls.spotify == playlist_url  ){ opt.setAttribute("selected",""); }
-        
-        document.querySelector("#spotifyPlaylist").add(opt);
-    }
+    await setupSpotifyPlaylistsUI();
 
     // Update the playlist track counter
-    GLOBALS.spotify_playlist_count = ( await getPlaylistJSON( getCurrentSpotifyPlaylist()) ).tracks.total;
+    updatePlaylistCount(SPOTIFY_SOURCE);
 }
 
-const startPlayer = async (playlistName, player) => 
-// Note that we only enter this function when the player is inactive
+const playSpotifyTrack = async (playlistName, player) => 
+// Start playback with a random track from the provided playlist followed by silence
 {
-    // The URI supplied in the body for /play can reference a playlist, track etc.
-    playlist_json = await getPlaylistJSON(playlistName);
-
+    if (playlistName == CONSTS.noContextOption) { console.error("No active Spotify playlist!"); return null; }
+    
+    // Fetch the URI for a random track from the playlist
+    tracks_json   = await getTracksJSON(playlistName);
+    try
+    {
+        track_index = null;
+        while( track_index == null || track_index == GLOBALS.prevNum.spotify )
+        // Avoid playing the same song twice in a row
+        {
+            track_index = Math.floor(Math.random() * (tracks_json.length-1))
+        }
+        trackURI = tracks_json[track_index].track.uri;
+    }
+    catch (e){ console.error(e); return null; }
+    
     // Start playback 
     await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${player._options.id}`, {
         method: 'PUT',
-        body: JSON.stringify({ context_uri: playlist_json['uri'] }),
+        body: JSON.stringify( { uris: [ trackURI, CONSTS.spotifySilence ] } ),
+        //body: JSON.stringify({ context_uri: (await getPlaylistJSON(playlistName)).uri }),
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${getCookiesAsJSON().access_token}`
@@ -109,9 +105,11 @@ const startPlayer = async (playlistName, player) =>
 
     // Fetch the current track (after a short delay)
     await new Promise(r => setTimeout(r, CONSTS.newTrackDelay));
-    await getCurrentTrack();
+    updateCurrentTrackUI();
 
     updatePlayerStatus('play');
+    GLOBALS.currentSource = SPOTIFY_SOURCE;
+    GLOBALS.prevNum.spotify = track_index;
 }
 
 const getCurrentTrack = async () =>
@@ -123,10 +121,8 @@ const getCurrentTrack = async () =>
     });
 
     let body = await res.text();
-    try { track = JSON.parse(body)['item']  }
+    try { return JSON.parse(body)  }
     catch (e) { console.error(e,body); return null; }
-
-    document.querySelector("#currentTrack").innerText = `Current track: ${track['name']}`;
 }
 
 const togglePlayback = async (playlistName, player) => 
@@ -138,7 +134,7 @@ const togglePlayback = async (playlistName, player) =>
         if (!_json['is_active'])
         // If the player is not active start it
         {
-            await startPlayer(playlistName, player);
+            await playSpotifyTrack(playlistName, player);
         }
         else
         {
@@ -173,8 +169,6 @@ const setVolume = async (diff, newPercent=null ) =>
 // Change the volume by diff percent or to a static value
 {
     let _json = await getDeviceJSON()
-    console.log("is_active", _json, _json['is_active'])
-
     if (_json['is_active'])
     {
         if (newPercent == null)
@@ -220,13 +214,26 @@ const skipTrack = async (next=true) =>
 
         // Update the 'currently playing' indicator
         // after a short wait to avoid the previous song being fetched
-        await new Promise(r => setTimeout(r, 2000));
-        await getCurrentTrack();
+        await new Promise(r => setTimeout(r, CONSTS.newTrackDelay));
+        updateCurrentTrackUI();
 
         // Update the mediaSession metadata
         setupMediaMetadata();
     }
     else { console.log(`skipTrack(): ${CONSTS.inactivePlayer}`); }
+}
+
+const seekPlayback = async (ms) =>
+{
+    // TODO will skip to the next/prev track if the seek operation overflows the scope of the track
+    // could cause bugs
+    let track_json = await getCurrentTrack();
+    console.log(track_json);
+    fetch(`https://api.spotify.com/v1/me/player/seek?position_ms=${track_json.progress_ms + ms}`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
+    });
+
 }
 
 //****** JSON Fetches  *********/
@@ -235,8 +242,9 @@ const getPlaylistJSON = async (name, debug=false) =>
 // Return the JSON object corresponding to the given playlist
 // Or the base JSON with all playlists if no name is given
 {
-    console.log(`Token ${getCookiesAsJSON().access_token}`)
-
+    // Edge-case if the context doesn't correspond to a playlist
+    if (name == CONSTS.noContextOption) { return null; }
+    
     let res = await fetch('https://api.spotify.com/v1/me/playlists', {
         method: 'GET',
         headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
@@ -305,4 +313,83 @@ const getPlayerJSON = async (debug=false) =>
 
     if (debug) { document.querySelector('#debugSpace').innerText = JSON.stringify(body); }
     return body;
+}
+
+const getTracksJSON = async (playlistName) =>
+{
+    playlist_json = await getPlaylistJSON(playlistName);
+    
+    // The API only allows for 100 tracks to be returned per request, we must therefore issue several fetches
+    // to aquire all the tracks of a playlist
+    if ( GLOBALS.playlistCount.spotify == null ){ updatePlaylistCount(SPOTIFY_SOURCE); }
+    let tracks = [];
+    
+    while ( tracks.length < GLOBALS.playlistCount.spotify )
+    {
+        let res = await fetch(`https://api.spotify.com/v1/playlists/${playlist_json.id}/tracks?offset=${tracks.length}`, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
+        });
+
+        body = await res.text();
+
+        try 
+        { 
+            tracks = tracks.concat( JSON.parse(body)['items'] );  
+        }
+        catch (e) { console.error(e); return null; }
+    }
+
+    return tracks;
+}
+
+//************** UI *******************/
+
+const setupSpotifyPlaylistsUI = async () =>
+{
+    let playlists = await getPlaylistJSON(name=false);
+
+    // Determine the current playlist (if any)
+    let playlist_url = false;
+    let _json = await getPlayerJSON();
+    if (_json != undefined && _json != null)
+    {
+        if (_json.context != null)
+        {
+            playlist_url = _json.context.external_urls.spotify;
+        }
+    }
+
+    if (!playlist_url)
+    // Default option when no context is found
+    {
+        let opt = document.createElement("option"); 
+        opt.innerText = CONSTS.noContextOption;
+        document.querySelector("#spotifyPlaylist").add(opt);
+    }
+
+    for (let item of playlists)
+    {
+        let opt = document.createElement("option"); 
+        opt.innerText = item.name;
+        
+        if ( playlist_url != false )
+        {
+            // Set the current playlist as selected
+            if ( item.external_urls.spotify == playlist_url  ){ opt.setAttribute("selected",""); }
+        }
+        else
+        {
+            // Use the configurations default playlist if none is found
+            if ( opt.innerText == CONSTS.defaultSpotifyPlaylist ){ opt.setAttribute("selected",""); }
+        }
+        
+        document.querySelector("#spotifyPlaylist").add(opt);
+    }
+
+}
+
+const updateCurrentTrackUI = async () =>
+{
+    document.querySelector("#currentTrack").innerText = `Current track: ${ (await getCurrentTrack()).item.name }`;
 }

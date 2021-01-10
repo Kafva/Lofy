@@ -19,6 +19,7 @@
             <select id="spotifyPlaylist">
             </select>
             
+            <div class="clickable" id="play">&lt; Play Track &gt;</div>
             <div class="clickable" id="pauseToggle">&lt; Play &gt;</div>
             <div class="clickable" id="volumeUp">Volume up</div>
             <div class="clickable" id="volumeDown">Volume down</div>
@@ -26,14 +27,17 @@
             <div id="currentTrack">Current track: - </div>
             <div class="clickable" id="previous">&lt;&lt;</div>
             <div class="clickable" id="next">&gt;&gt;</div>
+            <hr>
+            <div class="clickable" id="seekBack">[&lt;&lt;]</div>
+            <div class="clickable" id="seekForward">[&gt;&gt;]</div>
             
-            <hr/>
+            <hr>
                 <div class="clickable" id="playerInfo">Player Info</div>
                 <div class="clickable" id="playlist">Playlist</div>
                 <div class="clickable" id="devices">Devices</div>
-            <hr/>
+            <hr>
                 <div id="debugSpace"></div>
-            <hr/>
+            <hr>
             <ul id="params">
             </ul>
             
@@ -51,7 +55,8 @@
         <script src="clientGlobals.js"></script>
         <script src="clientFunctions.js"></script>
         <script src="spotifyFunctions.js"></script>
-        
+        <script src="localPlayerFunctions.js"></script>
+       
         <!-- Local file player -->
         <audio id="localPlayer" controls>
             <source id="localSource">

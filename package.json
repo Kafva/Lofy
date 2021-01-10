@@ -6,12 +6,14 @@
   "author": "Kafva",
   "license": "ISC",
   "dependencies": {
+    "buffer-image-size": "^0.6.4",
     "ejs": "^3.1.5",
     "fastify": "^3.2.0",
     "fastify-cookie": "^4.0.2",
     "fastify-cors": "^4.1.0",
     "fastify-session": "^5.0.0",
     "fastify-static": "^3.2.0",
+    "jsmediatags": "^3.9.3",
     "music-metadata": "^7.6.2",
     "point-of-view": "^4.4.0",
     "request": "^2.88.2"
