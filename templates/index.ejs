@@ -19,6 +19,8 @@
             <select id="spotifyPlaylist">
             </select>
             
+            <div id="progress"> - </div>
+
             <div class="clickable" id="play">&lt; Play Track &gt;</div>
             <div class="clickable" id="pauseToggle">&lt; Play &gt;</div>
             <div class="clickable" id="volumeUp">Volume up</div>
@@ -51,16 +53,17 @@
 
         <% } %>
         
-        <!-- Functions + Global configuration variables -->
+        <!-- Local file player -->
+        <audio id="localPlayer" controls preload="auto">
+            <source id="localSource">
+        </audio> 
+
+        <!-- Imports -->
         <script src="clientGlobals.js"></script>
         <script src="clientFunctions.js"></script>
         <script src="spotifyFunctions.js"></script>
         <script src="localPlayerFunctions.js"></script>
-       
-        <!-- Local file player -->
-        <audio id="localPlayer" controls>
-            <source id="localSource">
-        </audio> 
+        <script src="controls.js"></script>
 
         <!-- Main script -->
         <script src="client.js"></script>

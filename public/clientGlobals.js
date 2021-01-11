@@ -1,22 +1,10 @@
 const SPOTIFY_SOURCE = 'spotify';
 const LOCAL_SOURCE   = 'local';
 
-const CONSTS = {
-    
-    // Contains a key per audio source and a reference to functions that need to be implemented
-    audioSources: {
-        spotify:
-        {
-            getCurrentPlaylist: () => document.querySelector("#spotifyPlaylist").selectedOptions[0].innerText
-        },
-        local:
-        {
-            getCurrentPlaylist: () => document.querySelector("#localPlaylist").selectedOptions[0].innerText
-        }
-    },
-
+const CONFIG = {
+    historyLimit: 50,
     volumeStep: 5,
-    seekStep: 5000, // (ms)
+    seekStepMs: 5000, // (ms)
     defaultPercent: 20,
     playerName: 'Cloudify Player',
     inactivePlayer: 'Player inactive',
@@ -31,7 +19,7 @@ const CONSTS = {
     spotifySilence: "spotify:track:7cctPQS83y620UQtMd1ilL",
 
     //** Default config **/
-    defaultLocalPlaylist: 'lain',
+    defaultLocalPlaylist: 'purpose',
     defaultSpotifyPlaylist: '✨',
 
     //** Shortcuts **/
@@ -42,24 +30,38 @@ const CONSTS = {
     next: 'ArrowRight',
     volumeUp: 'ArrowUp',
     seekBack: 'H',
-    seekForward: 'L'
+    seekForward: 'L',
 }
 
 var GLOBALS = {
     currentSource: null,
+
+    // To show the progress indicator for spotify the 'timeupdate' events from
+    // the silent dummy track that plays alongside spotify is used
+    currentDuration: 
+    {
+        min: -1,
+        sec: -1
+    },
+    dummyProgressOffset: 
+    {
+        min: -1,
+        sec: -1
+    },
+
     mutexTaken: false,
 
-    // Contains the index of the previous track to avoid the
-    // shuffle algorithm to choose the same track twice in a row
-    // (Doubles as the current number since it is updated once a new track begins to play)
-    prevNum: {
-        spotify: -1,
-        local: -1,
-    },
-    
     // Contains the number of tracks for the current playlist from each source
     playlistCount: {
         spotify: null,
         local: null
-    }
+    },
+
+    // The current history position
+    // incremented/decremented when playing next/previous track
+    historyPos: 0,
 }
+
+// The trackNum corresponds to the index in a local or spotify playlist
+// { playlist: <...>, trackNum: <...> , spotifyURI: <...> }
+var HISTORY = [];

@@ -18,7 +18,7 @@ const util = require('util');
 const { send } = require("process");
 const exec = util.promisify(require('child_process').exec);
 
-module.exports = (CONSTS) => 
+module.exports = (CONFIG) => 
 {
     //***** Unexported ******//
 
@@ -26,7 +26,7 @@ module.exports = (CONSTS) =>
     {
         res.setCookie( key, value, 
         {  
-            domain: CONSTS.base_uri.replace(/^https?:\/\//,'').replace(new RegExp( ":" + CONSTS.WEB_SERVICE_PORT + "$" ), ''),
+            domain: CONFIG.base_uri.replace(/^https?:\/\//,'').replace(new RegExp( ":" + CONFIG.WEB_SERVICE_PORT + "$" ), ''),
             path: '/',
             signed: false,
         })
@@ -75,7 +75,7 @@ module.exports = (CONSTS) =>
         if (refresh) { reply.send(msg) }
         else
         {
-            reply.redirect( `${CONSTS.base_uri}/error?` + queryString.stringify( {error: msg })  ); 
+            reply.redirect( `${CONFIG.base_uri}/error?` + queryString.stringify( {error: msg })  ); 
         }
     }
 
@@ -104,8 +104,8 @@ module.exports = (CONSTS) =>
 
         // To encode using base64 we allocate a buffer object
         return new Buffer.alloc( 
-            CONSTS.client_id.length+CONSTS.client_secret.length+1,
-            CONSTS.client_id + ':' + CONSTS.client_secret)
+            CONFIG.client_id.length+CONFIG.client_secret.length+1,
+            CONFIG.client_id + ':' + CONFIG.client_secret)
         .toString('base64');
     }
 
@@ -162,21 +162,29 @@ module.exports = (CONSTS) =>
     {
         local_playlists = [];
         
-        for (let playlist of await fs.promises.readdir(CONSTS.local_playlists_dir))
+        for (let playlist of await fs.promises.readdir(CONFIG.local_playlists_dir))
         {
             // Extract each line (with the path to a sound file) from each playlist file 
-            let tracks = (await fs.promises.readFile(`${CONSTS.local_playlists_dir}/${playlist}`, 'utf-8')).toString().split('\n');
+            let tracks = (await fs.promises.readFile(`${CONFIG.local_playlists_dir}/${playlist}`, 'utf-8')).toString().split('\n');
+            
+            // Pop the last empty line
+            tracks.pop();
 
             let tracks_meta = [];
             
-            // The track_id corresponds to the line in the playlist file
+            // The track_id corresponds to the line in the playlist file and starts from 1
             let track_id = 1;
 
             for (let track of tracks)
             {
-                // Extract metadata from each track
-                if (track.length == 0) continue
+                if (track.length == 0)
+                {
+                    console.error(`============= TODO ================\nSkipping metadata fetch for ${playlist}`, track);
+                    continue
+                }
                 
+                // Extract metadata from each track
+                console.log(track);
                 metadata = await getMusicMeta(track);
                 cover = {};
                 
@@ -243,12 +251,12 @@ module.exports = (CONSTS) =>
         
         if ( local_playlists.some( p => p.name == req.params.playlist ) )
         {
-            track_count = await getLineCount( `${CONSTS.local_playlists_dir}/${req.params.playlist}.txt` );
+            track_count = await getLineCount( `${CONFIG.local_playlists_dir}/${req.params.playlist}.txt` );
 
             if ( parseInt(req.params.trackNum) <= track_count )
             {
                 // Fetch the .trackNum line from the playlist text file with the path to the sound file
-                let tracks = (await fs.promises.readFile(`${CONSTS.local_playlists_dir}/${req.params.playlist}.txt`, 'utf-8')).toString().split('\n');
+                let tracks = (await fs.promises.readFile(`${CONFIG.local_playlists_dir}/${req.params.playlist}.txt`, 'utf-8')).toString().split('\n');
 
                 try
                 {

@@ -50,14 +50,14 @@ const setLocalPlaylistOptions = async () =>
     
     // Default option when no context is found
     let opt = document.createElement("option"); 
-    opt.innerText = CONSTS.noContextOption;
+    opt.innerText = CONFIG.noContextOption;
     document.querySelector("#localPlaylist").add(opt);
 
     for (playlist of playlists)
     {
         let opt = document.createElement("option"); 
         opt.innerText = playlist.name;
-        if ( opt.innerText == CONSTS.defaultLocalPlaylist ){ opt.setAttribute("selected",""); }
+        if ( opt.innerText == CONFIG.defaultLocalPlaylist ){ opt.setAttribute("selected",""); }
         document.querySelector("#localPlaylist").add(opt);
     }
 }
@@ -65,33 +65,69 @@ const setLocalPlaylistOptions = async () =>
 const InitLocalPlayer = () =>
 {
     let p = document.querySelector("#localPlayer");
-    p.volume = CONSTS.defaultPercent / 100;
+    p.volume = CONFIG.defaultPercent / 100;
     
     updatePlaylistCount(LOCAL_SOURCE);
 }
 
-const playTrack = async (trackNum) => 
+const playNextLocalTrack = (trackNum=null) => 
 {
-    if (trackNum == undefined)
-    // Play a random track if no number is provided
-    {
-        while ( trackNum == GLOBALS.prevNum.local || trackNum == undefined)
-        // Avoid fetching the same track twice in a row
-        {
-            trackNum  = Math.floor( Math.random() * (GLOBALS.playlistCount.local-1) ) + 1;
-        }
-    }
-    
-    document.querySelector("#localSource").src = `/audio/${CONSTS.audioSources.local.getCurrentPlaylist()}/${trackNum}`
-    let p = document.querySelector("#localPlayer")
-    await p.load();
-    p.play();
+    // When picking the track to play we ensure that no track from the history is picked
+    // if all tracks have been played, clear the history
 
-    GLOBALS.currentSource = LOCAL_SOURCE;
-    GLOBALS.prevNum.local = trackNum;
+    if (trackNum == null)
+    /* (historyPos:0) ==> Play a new track (and add it to the HISTORY) */
+    {
+        trackNum = getNewTrackNumber( GLOBALS.playlistCount.local );
+
+        addTrackToHistory(LOCAL_SOURCE, trackNum);
+    }
+
+    // Play the given track
+    playLocalTrack(trackNum)
+}
+
+
+const getCurrentLocalTrack = async () =>
+{
+    let playlist = await getLocalPlaylistJSON( getCurrentPlaylist(LOCAL_SOURCE) );
+    if (playlist != undefined && playlist != [])
+    {
+        trackNum = getTrackHistoryJSON( GLOBALS.historyPos ).trackNum;
+        try
+        {
+            return playlist.tracks[trackNum - 1];
+        }
+        catch (e) { console.error(e); return null; }
+    }
+    else { console.error(`getCurrentLocalTrack(): getLocalPlaylistJSON ==> ${playlists}`); }
+
 }
 
 //********** HELPER **********/
+
+const playLocalTrack = async (trackNum) =>
+{
+    document.querySelector("#localSource").src = `/audio/${getCurrentPlaylist(LOCAL_SOURCE)}/${trackNum}`
+    let p = document.querySelector("#localPlayer");
+    await p.load();
+    await p.play();
+   
+    // Short wait before setting the currentDuration and updating the UI
+    await new Promise(r => setTimeout(r, CONFIG.newTrackDelay));
+
+    let sec = Math.floor(document.querySelector("#localPlayer").duration % 60);
+    if (sec <= 9 && sec >= 0){ sec = `0${sec}`; }
+
+    GLOBALS.currentDuration = 
+    {
+        sec: sec,
+        min: Math.floor(document.querySelector("#localPlayer").duration / 60)
+    }
+
+    updateCurrentTrackUI();
+    setupMediaMetadata();
+}
 
 const updateLocalPlaylistCount = async () =>
 {
@@ -99,7 +135,7 @@ const updateLocalPlaylistCount = async () =>
     
     for (let playlist of playlists)
     {
-        if ( playlist.name == CONSTS.audioSources.local.getCurrentPlaylist() )
+        if ( playlist.name == getCurrentPlaylist(LOCAL_SOURCE) )
         // Find the playlist corresponding to the current selection
         {
             GLOBALS.playlistCount.local = playlist.tracks.length; 

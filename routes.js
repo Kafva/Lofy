@@ -4,7 +4,7 @@
 // Note that requiring() the same package several times won't cause any overhead (cached)
 const queryString = require('querystring');
 
-module.exports = (fastify,functions,CONSTS) => 
+module.exports = (fastify,functions,CONFIG) => 
 {
     // Declare a handler for the favicon fetch
     fastify.get('/favicon.png', (req, res) => 
@@ -20,19 +20,19 @@ module.exports = (fastify,functions,CONSTS) =>
         // we save a cookie with the client containing the state,
         // when the client responds we make sure that the storedState in the cookie
         // matches that of the state in the req to /callback
-        let state = functions.stateString(CONSTS.STATE_STR_LENGTH);
+        let state = functions.stateString(CONFIG.STATE_STR_LENGTH);
         
         // Note that the interactions with `res` need to be chained togheter
         // We (seemingly) can't send a res with a Set-Cookie to the client and redirect at the same time
         // with fastify (possible with express) and therefore we redirect to a seperate route
         // were the redirection takes place after setting the cookie     
-        res.setCookie( CONSTS.state_cookie_key, state, 
+        res.setCookie( CONFIG.state_cookie_key, state, 
         {  
-            domain: CONSTS.base_uri.replace(/^https?:\/\//,'').replace(new RegExp( ":" + CONSTS.WEB_SERVICE_PORT + "$" ), ''),
+            domain: CONFIG.base_uri.replace(/^https?:\/\//,'').replace(new RegExp( ":" + CONFIG.WEB_SERVICE_PORT + "$" ), ''),
             path: '/',
             signed: true,
         })
-        .redirect(CONSTS.base_uri + '/authorize')
+        .redirect(CONFIG.base_uri + '/authorize')
     })
     
     //*** OAuth STEP 1 ***//
@@ -40,7 +40,7 @@ module.exports = (fastify,functions,CONSTS) =>
     // Redirect to accounts.spotify after setting the state cookie under /setstate
     {
         // Recall that the key-name for the state value isn't just 'state' 
-        let state = eval(`req.cookies.${CONSTS.state_cookie_key}`) || null;
+        let state = eval(`req.cookies.${CONFIG.state_cookie_key}`) || null;
 
         if (state)
         {
@@ -54,13 +54,13 @@ module.exports = (fastify,functions,CONSTS) =>
             //  * `response_type`, set to 'code'
 
             // .stringify will produce a URL encoded string from a given JSON object
-            res.redirect( CONSTS.auth_endpoint + 
+            res.redirect( CONFIG.auth_endpoint + 
                 queryString.stringify( 
                 {
-                    client_id: CONSTS.client_id,
-                    redirect_uri: CONSTS.redirect_uri,
+                    client_id: CONFIG.client_id,
+                    redirect_uri: CONFIG.redirect_uri,
                     state: state,
-                    scope: CONSTS.scope ,
+                    scope: CONFIG.scope ,
                     response_type: 'code',
                     show_dialog: false
                 }
@@ -87,7 +87,7 @@ module.exports = (fastify,functions,CONSTS) =>
 
             // x = A ? A : B
             // Assign A to x if A evaluates to true otherwise use B
-            let storedState = req.cookies ? req.cookies[CONSTS.state_cookie_key] : null;
+            let storedState = req.cookies ? req.cookies[CONFIG.state_cookie_key] : null;
             
             if ( storedState )
             {
@@ -98,7 +98,7 @@ module.exports = (fastify,functions,CONSTS) =>
                     // endpoint to fetch a `refresh` and `access` token using a POST req
                     {
                         // At this point we can delete the auth cookie
-                        res.clearCookie(CONSTS.state_cookie_key);
+                        res.clearCookie(CONFIG.state_cookie_key);
                         
                         // The POST req in OAuth2 should be of type: application/x-www-form-urlencoded
                         // * code: The 'code' recieved from the first step
@@ -113,11 +113,11 @@ module.exports = (fastify,functions,CONSTS) =>
 
                         let postOptions = 
                         {
-                            url: CONSTS.token_endpoint,
+                            url: CONFIG.token_endpoint,
                             form: 
                             {
                                 code: code,
-                                redirect_uri: CONSTS.redirect_uri,
+                                redirect_uri: CONFIG.redirect_uri,
                                 grant_type: 'authorization_code'
                             },
                             headers: 
@@ -165,11 +165,11 @@ module.exports = (fastify,functions,CONSTS) =>
             // and thereby does not have a 'code' (and the parameter is therefore skipped)
             let postOptions = 
             {
-                url: CONSTS.token_endpoint,
+                url: CONFIG.token_endpoint,
                 form: 
                 {
                     refresh_token: req.query.refresh_token,
-                    redirect_uri: CONSTS.redirect_uri,
+                    redirect_uri: CONFIG.redirect_uri,
                     grant_type: 'refresh_token'
                 },
                 headers: 

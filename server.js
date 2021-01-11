@@ -1,11 +1,11 @@
-module.exports = (fastify,CONSTS) => 
+module.exports = (fastify,CONFIG) => 
 {
     // Start the server
     const start = async () => 
     {
         try 
         {
-            await fastify.listen(CONSTS.WEB_SERVICE_PORT, CONSTS.WEB_SERVICE_ADDR)
+            await fastify.listen(CONFIG.WEB_SERVICE_PORT, CONFIG.WEB_SERVICE_ADDR)
             fastify.log.info(`server listening on ${fastify.server.address().port}`)
         } 
         catch (err) 

@@ -8,12 +8,14 @@ window.onSpotifyWebPlaybackSDKReady = () =>
         //      "Cross-Origin Request Blocked: The Same Origin Policy disallows reading 
         //      the remote resource at https://api.spotify.com/v1/melody/v1/logging/track_stream_verification"
         // will be displayed when skipping a song due to content blocking of spotify
+        // Web console View filter:
+        // -url:https://api.spotify.com/v1/melody/v1/logging/track_stream_verification -url:https://api.spotify.com/v1/melody/v1/logging/jssdk_playback_stats -url:https://api.spotify.com/v1/melody/v1/logging/jssdk_error
 
         // https://developer.spotify.com/documentation/web-playback-sdk/reference/#objects
         // Create a "Web Playback" object which can be chosen as the device to stream music to
         // (initalised through including a script on the main page)
         const player = new Spotify.Player({
-            name: CONSTS.playerName,
+            name: CONFIG.playerName,
             getOAuthToken: cb => { cb( getCookiesAsJSON().access_token  ); }
         });
        
@@ -32,28 +34,49 @@ window.onSpotifyWebPlaybackSDKReady = () =>
         refreshToken(player);
 
         // Initiate the mediakey handlers
-        mediaHandlers();
+        mediaHandlers(player);
 
         // Setup the listener for the spotify and local playlist <select> elements
         document.querySelector("#spotifyPlaylist").addEventListener('change', async () => 
         {
             // Set the global track counter
             updatePlaylistCount(SPOTIFY_SOURCE);
-            playSpotifyTrack( CONSTS.audioSources.spotify.getCurrentPlaylist(), player ) 
+            playNextTrack(player);
         });
 
         // Setup listeners for the dummy <audio> 
         document.querySelector("#dummy").onplay  = dummyAudioHandler('playing');
         document.querySelector("#dummy").onpause = dummyAudioHandler('paused');
-    };
-        
-    //****** Local Player **********/        
-    setLocalPlaylistOptions();
-    InitLocalPlayer();
 
-    document.querySelector("#localPlaylist").addEventListener('change', () => 
-    { 
-        // Set the global track counter
-        updatePlaylistCount(LOCAL_SOURCE);
-    });
+        document.querySelector("#dummy").addEventListener('timeupdate', () =>
+        // We will use timeupdates from the dummy player (which is synced up to play
+        // in correspondence with spotify) to produce a progress bar which the spotify player can use
+        {
+            updateProgressIndicator();
+        });
+
+        //****** Local Player **********/        
+        setLocalPlaylistOptions();
+        InitLocalPlayer();
+
+        // Event listener for changes to the playlist <select> element
+        document.querySelector("#localPlaylist").addEventListener('change', () => 
+        { 
+            // Set the global track counter
+            updatePlaylistCount(LOCAL_SOURCE);
+            playNextTrack(player);
+        });
+
+        document.querySelector("#localPlayer").addEventListener('ended', () => 
+        // Event listener for when a track ends
+        { 
+            playNextTrack(player);
+        });
+
+        document.querySelector("#localPlayer").addEventListener('timeupdate', () => 
+        // Event listener to contiously update progress indicator
+        { 
+            updateProgressIndicator();
+        });
+    };
 }

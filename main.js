@@ -17,7 +17,7 @@ const fs = require("fs");
 const runAsync = async () => 
 { 
 	//******* CONSTANTS ************/
-	const CONSTS = 
+	const CONFIG = 
 	{
 		WEB_SERVICE_PORT: PORT,
 		WEB_SERVICE_ADDR: '0.0.0.0',
@@ -50,7 +50,7 @@ const runAsync = async () =>
 
 	// Import the functions neccessary into the functions object (passing along the constants)
 	// Some external modules like queryString are also imported from here
-	const functions = require('./serverFunctions')(CONSTS);
+	const functions = require('./serverFunctions')(CONFIG);
 
 	//********* FASTIFY SETUP ************/
 
@@ -60,8 +60,8 @@ const runAsync = async () =>
 		{ 
 			logger: true,
 			https: {
-				key: CONSTS.tls_key,
-				cert: CONSTS.tls_cert
+				key: CONFIG.tls_key,
+				cert: CONFIG.tls_cert
 			}
 		});
 
@@ -73,7 +73,7 @@ const runAsync = async () =>
 	// it provides static file serving
 	fastify.register( fastify_static,
 	{
-		root: path.join(__dirname, CONSTS.DIR_ROOT),
+		root: path.join(__dirname, CONFIG.DIR_ROOT),
 		prefix: '/',
 	})
 
@@ -96,7 +96,7 @@ const runAsync = async () =>
 	// COOKIE support
 	// This plugin gives us access to reply.setCookie() and request.cookies
 	fastify.register(require('fastify-cookie'), {
-		secret: functions.stateString(CONSTS.STATE_STR_LENGTH), 
+		secret: functions.stateString(CONFIG.STATE_STR_LENGTH), 
 		parseOptions: {} 
 	})
 
@@ -111,11 +111,11 @@ const runAsync = async () =>
 	//************************************/
 
 	// Setup the routes and error handlers
-	require("./routes")(fastify,functions,CONSTS);
+	require("./routes")(fastify,functions,CONFIG);
 	require("./errorHandlers")(fastify);
 
 	// Start the server
-	require("./server")(fastify,CONSTS);
+	require("./server")(fastify,CONFIG);
 }
 
 runAsync();

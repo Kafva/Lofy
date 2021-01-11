@@ -1,4 +1,30 @@
-//********** Spotify API Endpoints ******************/
+const addPlayerListeners = (player) =>
+{
+    // See https://developer.spotify.com/documentation/web-playback-sdk/quick-start/
+    // Error handling
+    const errors = ['initialization_error', 'authentication_error', 'account_error', 'playback_error'];
+    errors.forEach( (item) => 
+    {
+        player.addListener(item, ({message}) => console.error(`${item}:`, message)  );
+    });
+
+    // Playback status updates
+    player.addListener('player_state_changed', state => 
+    { 
+        console.log('player_state_changed', state); 
+        handleSpotifyTrackEnd(player);
+    });
+
+    // Ready
+    player.addListener('ready', ({ device_id }) => 
+    { 
+        console.log('Ready with Device ID', device_id);
+        InitSpotifyPlayer(player);
+    });
+
+    // Not Ready
+    player.addListener('not_ready', ({ device_id }) => { console.log('Device ID has gone offline', device_id); });
+}
 
 const refreshToken = async (player) =>
 {
@@ -41,6 +67,8 @@ const refreshToken = async (player) =>
     xhr.send();
 }
 
+//********** Spotify API Actions ******************/
+
 const InitSpotifyPlayer = async (player) =>
 {
     // Activate the web player (without starting any music)
@@ -55,16 +83,16 @@ const InitSpotifyPlayer = async (player) =>
             'Authorization': `Bearer ${getCookiesAsJSON().access_token}`
         },
     });
-    await new Promise(r => setTimeout(r, CONSTS.newTrackDelay));
+    await new Promise(r => setTimeout(r, CONFIG.newTrackDelay));
     
     // Set auto-repeat state
-    await fetch(`https://api.spotify.com/v1/me/player/repeat?state=${CONSTS.defaultAutoRepeatState}&device_id=${player._options.id}`, {
+    await fetch(`https://api.spotify.com/v1/me/player/repeat?state=${CONFIG.defaultAutoRepeatState}&device_id=${player._options.id}`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
     });
     
     // Set volume to <default> %
-    setVolume(-1, CONSTS.defaultPercent);
+    setSpotifyVolume(-1, CONFIG.defaultPercent);
 
     // Fetch the users playlists and add them as options in the UI
     await setupSpotifyPlaylistsUI();
@@ -73,29 +101,39 @@ const InitSpotifyPlayer = async (player) =>
     updatePlaylistCount(SPOTIFY_SOURCE);
 }
 
-const playSpotifyTrack = async (playlistName, player) => 
+const playSpotifyTrack = async (playlistName, player, trackNum=null) => 
 // Start playback with a random track from the provided playlist followed by silence
+// If a prevIndex from HISTORY is provided the corresponding track from the playlist will be chosen
 {
-    if (playlistName == CONSTS.noContextOption) { console.error("No active Spotify playlist!"); return null; }
-    
-    // Fetch the URI for a random track from the playlist
+    if (playlistName == CONFIG.noContextOption) { console.error("No active Spotify playlist!"); return null; }
+    var track = null;
+
+    console.log("trackNum:", trackNum);
+
     tracks_json   = await getTracksJSON(playlistName);
-    try
-    {
-        track_index = null;
-        while( track_index == null || track_index == GLOBALS.prevNum.spotify )
-        // Avoid playing the same song twice in a row
-        {
-            track_index = Math.floor(Math.random() * (tracks_json.length-1))
-        }
-        trackURI = tracks_json[track_index].track.uri;
-    }
-    catch (e){ console.error(e); return null; }
     
+    
+    if ( trackNum == null )
+    /* (historyPos:0) ==> Play a new track */
+    {
+        trackNum = getNewTrackNumber( GLOBALS.playlistCount.spotify );
+   
+        // If we are playing a new track we should add it to the HISTORY
+        addTrackToHistory(SPOTIFY_SOURCE, trackNum, tracks_json[trackNum].track.uri); 
+    }
+    /* (historyPos >= 1) ==> Play next track in HISTORY */
+    // The next track is guaranteed to be a Spotify track from the base selection in `playPrevTrack()`
+    // and is passed as an argument
+    
+    
+    track     = tracks_json[trackNum].track; 
+    
+    console.log(`Track JSON for ${track.name}:`, track);
+
     // Start playback 
     await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${player._options.id}`, {
         method: 'PUT',
-        body: JSON.stringify( { uris: [ trackURI, CONSTS.spotifySilence ] } ),
+        body: JSON.stringify( { uris: [ track.uri, CONFIG.spotifySilence ] } ),
         //body: JSON.stringify({ context_uri: (await getPlaylistJSON(playlistName)).uri }),
         headers: {
             'Content-Type': 'application/json',
@@ -104,15 +142,29 @@ const playSpotifyTrack = async (playlistName, player) =>
     });
 
     // Fetch the current track (after a short delay)
-    await new Promise(r => setTimeout(r, CONSTS.newTrackDelay));
+    await new Promise(r => setTimeout(r, CONFIG.newTrackDelay));
     updateCurrentTrackUI();
 
-    updatePlayerStatus('play');
-    GLOBALS.currentSource = SPOTIFY_SOURCE;
-    GLOBALS.prevNum.spotify = track_index;
+    // Start the dummy player and set a value for the dummyProgressOffset
+    updateDummyPlayerStatus('play');
+    setDummyProgressOffset();
+
+    // Set a value for the duration on the progress bar
+    let sec = Math.floor(( track.duration_ms /1000)%60);
+    if (sec <= 9 && sec >= 0){ sec = `0${sec}`; }
+    
+    GLOBALS.currentDuration = 
+    {
+        sec: sec,
+        min: Math.floor((track.duration_ms/1000)/60) 
+    } 
+
+    // Setup media Session metadata
+    setupMediaMetadata();
+
 }
 
-const getCurrentTrack = async () =>
+const getCurrentSpotifyTrack = async () =>
 {
     // Fetch the current song and display its name
     let res = await fetch(`https://api.spotify.com/v1/me/player/currently-playing`, {
@@ -125,7 +177,7 @@ const getCurrentTrack = async () =>
     catch (e) { console.error(e,body); return null; }
 }
 
-const togglePlayback = async (playlistName, player) => 
+const toggleSpotifyPlayback = async (playlistName, player) => 
 {
     //*** NOTE that one cannot directly ['index'] the return value from an async function */
     let _json = await getDeviceJSON()
@@ -148,7 +200,7 @@ const togglePlayback = async (playlistName, player) =>
                         method: 'PUT',
                         headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
                     });
-                    updatePlayerStatus('pause');
+                    updateDummyPlayerStatus('pause');
                 }
                 else
                 {
@@ -156,16 +208,16 @@ const togglePlayback = async (playlistName, player) =>
                         method: 'PUT',
                         headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
                     });
-                    updatePlayerStatus('play');
+                    updateDummyPlayerStatus('play');
                 }
             }
-            else { console.error(`togglePlayback(): getPlayerJSON() ==> ${_json}`); }
+            else { console.error(`toggleSpotifyPlayback(): getPlayerJSON() ==> ${_json}`); }
         }
     }
-    else { console.error(`togglePlayback(): getDeviceJSON() ==> ${_json}`); }
+    else { console.error(`toggleSpotifyPlayback(): getDeviceJSON() ==> ${_json}`); }
 }
 
-const setVolume = async (diff, newPercent=null ) =>
+const setSpotifyVolume = async (diff, newPercent=null ) =>
 // Change the volume by diff percent or to a static value
 {
     let _json = await getDeviceJSON()
@@ -192,42 +244,17 @@ const setVolume = async (diff, newPercent=null ) =>
 
             document.querySelector("#volume").innerText = `< ${newPercent} % >`
         }
-        else { console.log(`setVolume(): invalid percent ${newPercent}`); }
+        else { console.log(`setSpotifyVolume(): invalid percent ${newPercent}`); }
         
     }
-    else { console.log(`setVolume(): ${CONSTS.inactivePlayer}`); }
+    else { console.log(`setSpotifyVolume(): ${CONFIG.inactivePlayer}`); }
 }
 
-const skipTrack = async (next=true) =>
-{
-    let _json = await getDeviceJSON()
-    console.log("is_active", _json, _json['is_active'])
-
-    if (_json['is_active'])
-    {
-        let endpoint = 'next';
-        if(!next) { endpoint = 'previous' }
-        fetch(`https://api.spotify.com/v1/me/player/${endpoint}`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
-        });
-
-        // Update the 'currently playing' indicator
-        // after a short wait to avoid the previous song being fetched
-        await new Promise(r => setTimeout(r, CONSTS.newTrackDelay));
-        updateCurrentTrackUI();
-
-        // Update the mediaSession metadata
-        setupMediaMetadata();
-    }
-    else { console.log(`skipTrack(): ${CONSTS.inactivePlayer}`); }
-}
-
-const seekPlayback = async (ms) =>
+const seekSpotifyPlayback = async (ms) =>
 {
     // TODO will skip to the next/prev track if the seek operation overflows the scope of the track
     // could cause bugs
-    let track_json = await getCurrentTrack();
+    let track_json = await getCurrentSpotifyTrack();
     console.log(track_json);
     fetch(`https://api.spotify.com/v1/me/player/seek?position_ms=${track_json.progress_ms + ms}`, {
         method: 'PUT',
@@ -236,14 +263,14 @@ const seekPlayback = async (ms) =>
 
 }
 
-//****** JSON Fetches  *********/
+//************** JSON Fetches ***************/
 
 const getPlaylistJSON = async (name, debug=false) =>
 // Return the JSON object corresponding to the given playlist
 // Or the base JSON with all playlists if no name is given
 {
     // Edge-case if the context doesn't correspond to a playlist
-    if (name == CONSTS.noContextOption) { return null; }
+    if (name == CONFIG.noContextOption) { return null; }
     
     let res = await fetch('https://api.spotify.com/v1/me/playlists', {
         method: 'GET',
@@ -285,7 +312,7 @@ const getDeviceJSON = async (debug=false) =>
 
     for (let item of devices)
     {
-        if (item['name'] == CONSTS.playerName)
+        if (item['name'] == CONFIG.playerName)
         {
             if (debug) { document.querySelector('#debugSpace').innerText =  JSON.stringify(item); }
             return item;
@@ -343,7 +370,37 @@ const getTracksJSON = async (playlistName) =>
     return tracks;
 }
 
-//************** UI *******************/
+//************** HELPER ***************/
+
+const handleSpotifyTrackEnd = async (player) =>
+{
+    if ( GLOBALS.currentSource == SPOTIFY_SOURCE )
+    {
+        track = await getCurrentSpotifyTrack();
+    
+        if ( track.item.uri == CONFIG.spotifySilence )
+        // Check if we are currently listening to 'silence'
+        {
+            console.log(`Listening to: ${track.item.name}`);
+            
+            if ( GLOBALS.mutexTaken == false)
+            // Ensure that no other 'player_state_change' event is in the
+            // process of starting a new track
+            {
+                GLOBALS.mutexTaken = true;
+                console.log("Mutex taken!");
+
+                playNextTrack(player);
+
+                // Short wait before releasing the mutex
+                await new Promise(r => setTimeout(r, CONFIG.newTrackDelay));
+                GLOBALS.mutexTaken = false;
+                console.log("Mutex released!");
+            }
+        }
+    }
+
+} 
 
 const setupSpotifyPlaylistsUI = async () =>
 {
@@ -364,7 +421,7 @@ const setupSpotifyPlaylistsUI = async () =>
     // Default option when no context is found
     {
         let opt = document.createElement("option"); 
-        opt.innerText = CONSTS.noContextOption;
+        opt.innerText = CONFIG.noContextOption;
         document.querySelector("#spotifyPlaylist").add(opt);
     }
 
@@ -381,15 +438,10 @@ const setupSpotifyPlaylistsUI = async () =>
         else
         {
             // Use the configurations default playlist if none is found
-            if ( opt.innerText == CONSTS.defaultSpotifyPlaylist ){ opt.setAttribute("selected",""); }
+            if ( opt.innerText == CONFIG.defaultSpotifyPlaylist ){ opt.setAttribute("selected",""); }
         }
         
         document.querySelector("#spotifyPlaylist").add(opt);
     }
 
-}
-
-const updateCurrentTrackUI = async () =>
-{
-    document.querySelector("#currentTrack").innerText = `Current track: ${ (await getCurrentTrack()).item.name }`;
 }
