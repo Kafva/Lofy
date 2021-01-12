@@ -47,7 +47,7 @@ module.exports = (CONFIG) =>
     
     //**** Exported ****//
 
-    const getTokenParams = (body, refresh) =>
+    const getTokenParams = (body, textOnly) =>
     {
         if ( body.access_token !== undefined && body.expires_in !== undefined && body.refresh_token !== undefined )
         {
@@ -57,7 +57,7 @@ module.exports = (CONFIG) =>
                 expires_in: body.expires_in
             };  
         }
-        else if ( body.access_token !== undefined && body.expires_in !== undefined && refresh )
+        else if ( body.access_token !== undefined && body.expires_in !== undefined && textOnly )
         // NOTE that when using the refresh_token to gain a new access_token the response could
         // lack a new refresh_token
         {
@@ -69,10 +69,10 @@ module.exports = (CONFIG) =>
         else { return false; }
     }
     
-    const errorRedirect = (reply,msg, refresh=false) =>
+    const errorRedirect = (reply,msg, textOnly=false) =>
     {
         // We do not want to redirect when raising errors on the /refresh route
-        if (refresh) { reply.send(msg) }
+        if (textOnly) { reply.send(msg) }
         else
         {
             reply.redirect( `${CONFIG.base_uri}/error?` + queryString.stringify( {error: msg })  ); 
@@ -88,8 +88,7 @@ module.exports = (CONFIG) =>
 
         for (let i=0; i<length; i++)
         {
-            // If we multiply by 3 there is a minimal chance that we get a index out of bounds
-            index = Math.floor(Math.random() * 2.9999999);
+            index = Math.floor(Math.random() * 3);
             str += String.fromCharCode( Math.floor(Math.random()*cnts[index] + bases[index]) );
         }
         
@@ -109,7 +108,7 @@ module.exports = (CONFIG) =>
         .toString('base64');
     }
 
-    const tokenRequest = (res, postOptions, refresh=false) =>
+    const tokenRequest = (res, postOptions, textOnly=false) =>
     {
         // We use a seperate module to send out our own request
         request.post( postOptions, (error, response, body) => 
@@ -128,9 +127,9 @@ module.exports = (CONFIG) =>
                 // With this we can pass the access_token to the client and let them issue
                 // requests to the Spotify web API. 
 
-                if ( (params = getTokenParams(body, refresh)) !== false )
+                if ( (params = getTokenParams(body, textOnly)) !== false )
                 {
-                    if (refresh) { res.send(params); }
+                    if (textOnly) { res.send(params); }
                     else
                     { 
                         // NOTE that using the URL parameters to pass the access_token etc. is not that bad
@@ -146,12 +145,14 @@ module.exports = (CONFIG) =>
                         setCookie(res,'refresh_token', params.refresh_token);
                         setCookie(res,'expires_in', params.expires_in.toString() );
                         
-                        res.redirect('/home');
+                        // The ?redirect paramater is used to notify the server that the client
+                        // has passed the OAuth process
+                        res.redirect('/home?redirect=true');
                     }
                 }
-                else { errorRedirect(res, `Missing component(s) of response: ${params}`, refresh); }
+                else { errorRedirect(res, `Missing component(s) of response: ${params}`, textOnly); }
             }
-            else { errorRedirect(res, error || body.error, refresh); }
+            else { errorRedirect(res, error || body.error, textOnly); }
         });
 
     }
@@ -184,7 +185,6 @@ module.exports = (CONFIG) =>
                 }
                 
                 // Extract metadata from each track
-                console.log(track);
                 metadata = await getMusicMeta(track);
                 cover = {};
                 
@@ -276,7 +276,7 @@ module.exports = (CONFIG) =>
                         }
                         res.send( metadata.common.picture[0].data );
                     }
-                    else { errorRedirect(res,"No cover available", refresh=false); }
+                    else { errorRedirect(res,"No cover available", textOnly=false); }
                 }
                 else
                 {
@@ -292,9 +292,9 @@ module.exports = (CONFIG) =>
                     return res.send(stream);
                 }
             }
-            else { errorRedirect(res, `'${req.params.playlist}' only has ${track_count} tracks`,refresh=true); }
+            else { errorRedirect(res, `'${req.params.playlist}' only has ${track_count} tracks`, textOnly=true); }
         }
-        else { errorRedirect(res, `No such playlist: ${req.params.playlist}`,refresh=true); }
+        else { errorRedirect(res, `No such playlist: ${req.params.playlist}`, textOnly=true); }
     }
 
     return { getTokenParams, errorRedirect, stateString, getAuthHeader, tokenRequest, getLocalPlaylists, getTrackData };

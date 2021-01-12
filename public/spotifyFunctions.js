@@ -108,10 +108,7 @@ const playSpotifyTrack = async (playlistName, player, trackNum=null) =>
     if (playlistName == CONFIG.noContextOption) { console.error("No active Spotify playlist!"); return null; }
     var track = null;
 
-    console.log("trackNum:", trackNum);
-
     tracks_json   = await getTracksJSON(playlistName);
-    
     
     if ( trackNum == null )
     /* (historyPos:0) ==> Play a new track */
@@ -161,7 +158,6 @@ const playSpotifyTrack = async (playlistName, player, trackNum=null) =>
 
     // Setup media Session metadata
     setupMediaMetadata();
-
 }
 
 const getCurrentSpotifyTrack = async () =>
@@ -177,7 +173,7 @@ const getCurrentSpotifyTrack = async () =>
     catch (e) { console.error(e,body); return null; }
 }
 
-const toggleSpotifyPlayback = async (playlistName, player) => 
+const toggleSpotifyPlayback = async (playlistName, player, pauseOnly=false) => 
 {
     //*** NOTE that one cannot directly ['index'] the return value from an async function */
     let _json = await getDeviceJSON()
@@ -186,7 +182,10 @@ const toggleSpotifyPlayback = async (playlistName, player) =>
         if (!_json['is_active'])
         // If the player is not active start it
         {
-            await playSpotifyTrack(playlistName, player);
+            if (!pauseOnly)
+            {
+                await playSpotifyTrack(playlistName, player);
+            }
         }
         else
         {
@@ -204,11 +203,14 @@ const toggleSpotifyPlayback = async (playlistName, player) =>
                 }
                 else
                 {
-                    await fetch(`https://api.spotify.com/v1/me/player/play`, {
-                        method: 'PUT',
-                        headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
-                    });
-                    updateDummyPlayerStatus('play');
+                    if(!pauseOnly)
+                    {
+                        await fetch(`https://api.spotify.com/v1/me/player/play`, {
+                            method: 'PUT',
+                            headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
+                        });
+                        updateDummyPlayerStatus('play');
+                    }
                 }
             }
             else { console.error(`toggleSpotifyPlayback(): getPlayerJSON() ==> ${_json}`); }
@@ -242,7 +244,7 @@ const setSpotifyVolume = async (diff, newPercent=null ) =>
                 headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
             });
 
-            document.querySelector("#volume").innerText = `< ${newPercent} % >`
+            document.querySelector("#volume").innerText = `${newPercent} %`
         }
         else { console.log(`setSpotifyVolume(): invalid percent ${newPercent}`); }
         
@@ -265,7 +267,7 @@ const seekSpotifyPlayback = async (ms) =>
 
 //************** JSON Fetches ***************/
 
-const getPlaylistJSON = async (name, debug=false) =>
+const getPlaylistJSON = async (name) =>
 // Return the JSON object corresponding to the given playlist
 // Or the base JSON with all playlists if no name is given
 {
@@ -289,7 +291,6 @@ const getPlaylistJSON = async (name, debug=false) =>
         {
             if (item['name'] == name)
             {
-                if (debug) { document.querySelector('#debugSpace').innerText = JSON.stringify(item); }
                 return item;
             }   
         }
@@ -297,7 +298,7 @@ const getPlaylistJSON = async (name, debug=false) =>
     else { return playlists; }
 }
 
-const getDeviceJSON = async (debug=false) =>
+const getDeviceJSON = async () =>
 // async functions always return a Promise for their return value
 {
     let res = await fetch('https://api.spotify.com/v1/me/player/devices', {
@@ -314,14 +315,13 @@ const getDeviceJSON = async (debug=false) =>
     {
         if (item['name'] == CONFIG.playerName)
         {
-            if (debug) { document.querySelector('#debugSpace').innerText =  JSON.stringify(item); }
             return item;
         }   
     }
     return null;
 }
 
-const getPlayerJSON = async (debug=false) =>
+const getPlayerJSON = async () =>
 {
     // The Content-Type header is only neccessary when sending data in the body
     let res = await fetch('https://api.spotify.com/v1/me/player', {
@@ -338,7 +338,6 @@ const getPlayerJSON = async (debug=false) =>
     }
     catch(e){ console.error(e); return null; }
 
-    if (debug) { document.querySelector('#debugSpace').innerText = JSON.stringify(body); }
     return body;
 }
 

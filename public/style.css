@@ -1,6 +1,77 @@
+@font-face 
+{
+    /* https://fonts.google.com/specimen/Source+Sans+Pro?sidebar.open=true&selection.family=Source+Sans+Pro */
+    font-family: 'Source Sans Pro';
+    src: url('resc/SourceSansPro-Regular.ttf'); 
+}
+
+* 
+{ 
+    font-family: 'Source Sans Pro', Arial; 
+    overflow: scroll; 
+}
+
+:root 
+{
+	/* COLORS */    
+    --bkg: #323639;
+    --bar: #0c0c0c;
+	--text: #d1d2d2;
+}
+
+
+body
+{ 
+    background-color: var(--bkg); 
+    color: var(--text);
+    margin: 0; padding: 0; border: 0; outline: 0;
+}
+
+
+#bar 
+{
+   background-color: var(--bar);
+   opacity: 0.7;
+   position: fixed;
+   text-align: center;
+   
+   width: 100%;
+   height: fit-content;
+   min-width: 50%;
+   overflow: scroll;
+}
+
+/* Organize #bar items in a horizontal list */
+#bar > div
+{
+    opacity: 1.0;
+    display: inline-block;
+    width: fit-content;
+    margin: 5px;
+}
+
+#currentTrack
+{
+    max-height: 20px;
+    max-width: 200px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+#bar > select
+{
+    opacity: 1.0;
+    float: right;
+}
+
+.seperator
+{
+    margin: 10px;
+}
+
 .clickable
 {
     cursor: pointer;
 }
 
-#dummy { display: none; }
+audio { display: none; }

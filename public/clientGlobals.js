@@ -8,8 +8,10 @@ const CONFIG = {
     defaultPercent: 20,
     playerName: 'Cloudify Player',
     inactivePlayer: 'Player inactive',
-    pauseText: '< Pause >',
-    playText: '< Play >',
+    pauseClass: 'clickable nf nf-fa-pause',
+    playClass: 'clickable nf nf-fa-play',
+    spotifyIconCSS: 'nf nf-fa-spotify',
+    localIconCSS: 'nf nf-mdi-file_music',
     noContextOption: '-',
     newTrackDelay: 1500,
     defaultAutoRepeatState: 'off',
@@ -19,8 +21,8 @@ const CONFIG = {
     spotifySilence: "spotify:track:7cctPQS83y620UQtMd1ilL",
 
     //** Default config **/
-    defaultLocalPlaylist: 'purpose',
-    defaultSpotifyPlaylist: '✨',
+    defaultLocalPlaylist: 'dv',
+    defaultSpotifyPlaylist: '🌙',
 
     //** Shortcuts **/
     // Each one except <SPACE> requires <SHIFT> as a modifier

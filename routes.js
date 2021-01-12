@@ -142,10 +142,17 @@ module.exports = (fastify,functions,CONFIG) =>
     //**** OAuth STEP 3 *****/
     fastify.get('/home', (req, res) => 
     {
+        // Redirect to /setstate if the client was not redirected to /home via OAuth
+        if ( req.query.redirect == null )
+        { 
+            console.log("======== Redirecting to /setstate ========="); 
+            res.redirect('/setstate'); 
+        }
+
         // Use the URL parameters passed from STEP 2 
         // for access_token, refresh_token and expires_in on the client side
         // to make requests to the web API
-        res.view('/templates/index.ejs', { title: "/home" } );
+        res.view('/templates/index.ejs', { route: '/home' } );
     })
     
     //**** OAuth STEP 4 *****/
@@ -180,7 +187,7 @@ module.exports = (fastify,functions,CONFIG) =>
                 json: true
             }                
 
-            functions.tokenRequest(res, postOptions, refresh=true);
+            functions.tokenRequest(res, postOptions, textOnly=true);
         }
         else 
         { 
@@ -198,14 +205,7 @@ module.exports = (fastify,functions,CONFIG) =>
     
     fastify.get('/', (req, res) => 
     {
-        // Static file serving
-        //res.sendFile("index.html") 
-        res.view('/templates/index.ejs', { title: "/" })
-    })
-    
-    fastify.get('/test', (req, res) => 
-    {
-        res.view('/templates/index.ejs', { title: "/test" })
+        res.redirect('/home'); 
     })
     
     //******* LOCAL FILES ********/

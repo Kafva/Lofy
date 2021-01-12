@@ -87,7 +87,6 @@ const playNextLocalTrack = (trackNum=null) =>
     playLocalTrack(trackNum)
 }
 
-
 const getCurrentLocalTrack = async () =>
 {
     let playlist = await getLocalPlaylistJSON( getCurrentPlaylist(LOCAL_SOURCE) );
@@ -102,6 +101,13 @@ const getCurrentLocalTrack = async () =>
     }
     else { console.error(`getCurrentLocalTrack(): getLocalPlaylistJSON ==> ${playlists}`); }
 
+}
+
+const toggleLocalPlayback = () =>
+{
+    let p = document.querySelector("#localPlayer");
+    if (p.paused) { p.play();  updateDummyPlayerStatus('play');  }
+    else          { p.pause(); updateDummyPlayerStatus('pause'); }
 }
 
 //********** HELPER **********/
@@ -125,6 +131,7 @@ const playLocalTrack = async (trackNum) =>
         min: Math.floor(document.querySelector("#localPlayer").duration / 60)
     }
 
+    updateDummyPlayerStatus('play');
     updateCurrentTrackUI();
     setupMediaMetadata();
 }

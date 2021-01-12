@@ -4,69 +4,62 @@
 		<title>Cloudify</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link href="style.css" rel="stylesheet" , type="text/css">
+        <link href="nerd-fonts.css" rel="stylesheet" , type="text/css">
         <link rel="shortcut icon" type="img/png" href="favicon.png">
     </head>
 
     <body>
-        <% if (typeof title == 'undefined') { title = 'Cloudify'; } %>
-        <h1><%= title %></h1>
-        
-        <select id="localPlaylist">
-        </select>
-
-        <% if (title == "/home") 
+        <% if (route == "/home") 
         { %>
-            <select id="spotifyPlaylist">
-            </select>
-            
-            <div id="progress"> - </div>
+            <div id="bar">
 
-            <div class="clickable" id="play">&lt; Play Track &gt;</div>
-            <div class="clickable" id="pauseToggle">&lt; Play &gt;</div>
-            <div class="clickable" id="volumeUp">Volume up</div>
-            <div class="clickable" id="volumeDown">Volume down</div>
-            <div id="volume">&lt; - &gt;</div>
-            <div id="currentTrack">Current track: - </div>
-            <div class="clickable" id="previous">&lt;&lt;</div>
-            <div class="clickable" id="next">&gt;&gt;</div>
-            <hr>
-            <div class="clickable" id="seekBack">[&lt;&lt;]</div>
-            <div class="clickable" id="seekForward">[&gt;&gt;]</div>
-            
-            <hr>
-                <div class="clickable" id="playerInfo">Player Info</div>
-                <div class="clickable" id="playlist">Playlist</div>
-                <div class="clickable" id="devices">Devices</div>
-            <hr>
-                <div id="debugSpace"></div>
-            <hr>
-            <ul id="params">
-            </ul>
+                <div id="previous"     class="clickable nf nf-mdi-skip_previous"></div>
+                <div id="pauseToggle"  class="clickable nf nf-fa-play"></div> 
+                <div id="next"         class="clickable nf nf-mdi-skip_next"></div>
+                
+                <div class="seperator nf nf-indentation-line"></div>
+                
+                <div id="currentTrack"> - </div> 
+                <div id="currentSource"></div> 
+                <div id="seekBack"     class="clickable nf nf-fa-backward"></div>
+                <div id="progress"> - </div>
+                <div id="seekForward"  class="clickable nf nf-fa-forward"></div>
+
+                <div class="seperator nf nf-indentation-line"></div>
+
+                <div id="volumeUp"      class="clickable nf nf-mdi-volume_plus"></div> 
+                <div id="volume"> - </div>
+                <div id="volumeDown"    class="clickable nf nf-mdi-volume_minus"></div>
+                
+                <select id="localPlaylist">
+                </select>
+                
+                <select id="spotifyPlaylist">
+                </select>
+
+            </div>
             
             <!-- Dummy audio player -->
             <audio id="dummy" controls loop>
                 <source src="resc/silence.m4a" type="audio/x-m4a">
             </audio> 
+            <!-- Local file player -->
+            <audio id="localPlayer" controls preload="auto">
+                <source id="localSource">
+            </audio> 
 
             <!-- Spotify iframe injection script -->
             <script src="https://sdk.scdn.co/spotify-player.js"></script>
+            
+            <!-- Imports -->
+            <script src="clientGlobals.js"></script>
+            <script src="clientFunctions.js"></script>
+            <script src="spotifyFunctions.js"></script>
+            <script src="localPlayerFunctions.js"></script>
+            <script src="controls.js"></script>
 
+            <!-- Main script -->
+            <script src="client.js"></script>
         <% } %>
-        
-        <!-- Local file player -->
-        <audio id="localPlayer" controls preload="auto">
-            <source id="localSource">
-        </audio> 
-
-        <!-- Imports -->
-        <script src="clientGlobals.js"></script>
-        <script src="clientFunctions.js"></script>
-        <script src="spotifyFunctions.js"></script>
-        <script src="localPlayerFunctions.js"></script>
-        <script src="controls.js"></script>
-
-        <!-- Main script -->
-        <script src="client.js"></script>
     </body>
-
 </html>

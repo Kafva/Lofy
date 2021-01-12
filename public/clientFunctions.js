@@ -1,41 +1,19 @@
 // BUGS
-//  * >> on local to spotify fails to fetch Media metadata
-//  * << on spotify not working?
-//  * Local tracks fetch incorrect metadata/audio combo
-
+//  * Progress bar for Spotify bugs out
+//  * Seek on local files
 
 // TODO
 //  * Incontsicies when metadata fails to load from some songs
-//  * Fix copying of modules into public/modules
-//  * Fix it so that one can go directly to /home 
-//  * Rename refresh= parameter to 'textOnly'
-//  * Shuffle gets fcked when switching playlists
 //  * Server crashes sometimes when non-existant files are found in a playlist(?)
 //  ### Spotify
-//      * seek (https://developer.spotify.com/documentation/web-api/reference/player/seek-to-position-in-currently-playing-track/)
-//      * Cache playlist-tracks fetch
 //  ### Local files
-//      * We will need a history buffer to support [<<] (including the source and trackId that was played)
-//      * on-end trigger for new track (spotify or local)
-//      * Unify:
-//          - Play/pause
-//          - Next/prev
-//          - seek
-//          - volume
-//      * Hide HTML player and build unified front-end
-//      * Translate emojis to text (https://www.npmjs.com/package/emoji-text OR port emoji.bash)
-//      * ~/Music/iTunes/iTunes\ Media/Music
 //  ### Soundcloud
 //      * Currently not avaialable: https://soundcloud.com/you/apps/new
 //  ### Front-end
-//      * Source indicator for current media
-//      * Sound wave thing
-//      * Optional display for all metadata
+//      * Sound wave
 //      * Mobile integration
-//      * Search function to play specific track(s) 
-//      * Repeat current track button
+//      * Display (hidable) current playlist(s) with clickable elements to play a track
 
-//      * Playback length
 
 //**** MEDIA KEYS *****/
 // The spotify <iframe> contains the actual web player and its own mediaSession object which we can't access due to SOP
@@ -120,10 +98,7 @@ const playNextTrack = async (player) =>
         case LOCAL_SOURCE:
             // Pause Spotify and start playing from the local source
             GLOBALS.currentSource = LOCAL_SOURCE;   
-            await fetch(`https://api.spotify.com/v1/me/player/pause`, {
-                method: 'PUT',
-                headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
-            });
+            toggleSpotifyPlayback( getCurrentPlaylist(SPOTIFY_SOURCE), player, pauseOnly=true );
             playNextLocalTrack(nextTrackNum);
             break; 
     }
@@ -173,9 +148,7 @@ const pauseToggle = (player) =>
             toggleSpotifyPlayback(getCurrentPlaylist(SPOTIFY_SOURCE), player);
             break;
         case LOCAL_SOURCE:
-            let p = document.querySelector("#localPlayer");
-            if (p.paused) { p.play();  updateDummyPlayerStatus('play');  }
-            else          { p.pause(); updateDummyPlayerStatus('pause'); }
+            toggleLocalPlayback();
             break;
         default:
             // If no source is playing start the player
@@ -251,11 +224,13 @@ const updateCurrentTrackUI = async () =>
     {
         case SPOTIFY_SOURCE:
             document.querySelector("#currentTrack").innerText = 
-                `Current track: ${ (await getCurrentSpotifyTrack()).item.name }`;    
+                `${ (await getCurrentSpotifyTrack()).item.name }`;    
+            document.querySelector("#currentSource").setAttribute("class", CONFIG.spotifyIconCSS); 
             break;
         case LOCAL_SOURCE:
             document.querySelector("#currentTrack").innerText = 
-                `Current track: ${ (await getCurrentLocalTrack() ).title}`;    
+                `${ (await getCurrentLocalTrack() ).title}`;    
+            document.querySelector("#currentSource").setAttribute("class", CONFIG.localIconCSS); 
             break;
     }
 }
@@ -269,12 +244,12 @@ const updateDummyPlayerStatus = (mode) =>
     if (mode == 'pause')
     {
         if( GLOBALS.currentSource == SPOTIFY_SOURCE ){ document.querySelector("#dummy").pause(); }
-        document.querySelector("#pauseToggle").innerText = CONFIG.playText;
+        document.querySelector("#pauseToggle").setAttribute("class", CONFIG.playClass);
     }
     else if ( mode == 'play' )
     {
         if( GLOBALS.currentSource == SPOTIFY_SOURCE ) { document.querySelector("#dummy").play(); }
-        document.querySelector("#pauseToggle").innerText = CONFIG.pauseText;
+        document.querySelector("#pauseToggle").setAttribute("class", CONFIG.pauseClass);
     }
 }
 
@@ -420,10 +395,9 @@ const getNewTrackNumber = (playlistLength,trackNum=null) =>
     .some( h => h.trackNum == trackNum ) || trackNum == null )
     // Ensure that no track (from the current playlist) present in the history is picked
     {
-        // We multiply by [length] and not [length-1] Math.random() does NOT return 1
+        // We multiply by [length] and not [length-1]
+        // Math.random() cannot return 1
         trackNum  = Math.floor( Math.random() * playlistLength ) + 1;
-
-        console.log( HISTORY.filter( h => h.playlist == getCurrentPlaylist()),  HISTORY.filter( h => h.playlist == getCurrentPlaylist()).some( h => h.trackNum == trackNum ), trackNum );
     }
 
     return trackNum;
@@ -444,7 +418,11 @@ const getCurrentPlaylist = (source = GLOBALS.currentSource) =>
     switch(source)
     {
         case SPOTIFY_SOURCE:
-            return document.querySelector("#spotifyPlaylist").selectedOptions[0].innerText;
+            if ( document.querySelector("#spotifyPlaylist").length == 0 )
+            {
+                console.error("No Spotify playlists loaded (connection failure)");
+            }
+            else { return document.querySelector("#spotifyPlaylist").selectedOptions[0].innerText; }
         case LOCAL_SOURCE:
             return document.querySelector("#localPlaylist").selectedOptions[0].innerText;
     }

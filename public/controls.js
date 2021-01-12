@@ -1,7 +1,7 @@
 
 const keyboardHandler = (event, player) => 
 {
-    console.log(`-------- ${event.key} | ${event.shiftKey} ----------`)   
+    console.log(`-------- ${event.key} | (shift:${event.shiftKey}) ----------`)   
 
     if ( event.key == CONFIG.pausePlay )
     {
@@ -61,7 +61,7 @@ const mediaHandlers = (player) =>
                     }
                     break;
                 case LOCAL_SOURCE:
-                    document.querySelector("#localPlayer").play(); 
+                    toggleLocalPlayback();
                     break;
             }
             
@@ -89,7 +89,7 @@ const mediaHandlers = (player) =>
                     }
                     break;
                 case LOCAL_SOURCE:
-                    document.querySelector("#localPlayer").pause(); 
+                    toggleLocalPlayback();
                     break;
             }
             updateDummyPlayerStatus('pause');
@@ -131,17 +131,6 @@ const clickHandler = (player) =>
             break;
         case 'seekBack':
             seekPlayback(-1);
-            break;
-
-        //-- Debug ---//
-        case 'play':
-            playNextTrack(player);    
-            break;
-        case 'devices':
-            getDeviceJSON(debug=true); 
-            break;
-        case 'playerInfo':
-            getPlayerJSON(debug=true);
             break;
     }
 }
