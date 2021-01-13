@@ -7,6 +7,7 @@ Soundcloud support is (at the time of writing) not possible due to a [limit on a
 * `npm i && node main.js`
 * playlists directory
 * Optional fonts
+* Run as a 'service' `nohup node main.js & disown`
 
 
 ## TLS

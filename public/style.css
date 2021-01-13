@@ -14,8 +14,8 @@
 :root 
 {
 	/* COLORS */    
-    --bkg: #323639;
-    --bar: #0c0c0c;
+    --bar: #131314;
+    --bkg: #1a1c1f;
 	--text: #d1d2d2;
 }
 
@@ -27,18 +27,19 @@ body
     margin: 0; padding: 0; border: 0; outline: 0;
 }
 
-
+/********** Bar **********/
 #bar 
 {
    background-color: var(--bar);
-   opacity: 0.7;
+   opacity: 1.0;
    position: fixed;
    text-align: center;
    
    width: 100%;
    height: fit-content;
    min-width: 50%;
-   overflow: scroll;
+   z-index: 10;
+    
 }
 
 /* Organize #bar items in a horizontal list */
@@ -61,6 +62,8 @@ body
 #bar > select
 {
     opacity: 1.0;
+    background-color: var(--bkg);
+    color: var(--text);
     float: right;
 }
 
@@ -69,9 +72,45 @@ body
     margin: 10px;
 }
 
+/********** Track list **********/
+#trackList
+{
+    border-collapse: collapse;
+    text-align: right;
+
+    position: absolute;
+    width: 70%;
+    height: auto;
+    
+    top: 100px;
+    left: 5%;
+    overflow: scroll;
+    padding: 15px;
+}
+
+.trackItem
+{
+    opacity: 1.0;
+    max-height: 18px;
+    max-width: 100px;
+    margin-bottom: 5px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    
+    border-bottom: 1px solid rgba(65, 64, 64, 0.5)
+}
+
+td,th { padding-right: 14px;  }
+
 .clickable
 {
     cursor: pointer;
 }
 
 audio { display: none; }
+
+/*#dummy
+{ 
+    position: fixed;
+    top: 700px;
+}*/

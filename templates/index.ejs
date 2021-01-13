@@ -11,42 +11,49 @@
     <body>
         <% if (route == "/home") 
         { %>
-            <div id="bar">
+            <div tabIndex="-1" id="bar">
 
-                <div id="previous"     class="clickable nf nf-mdi-skip_previous"></div>
-                <div id="pauseToggle"  class="clickable nf nf-fa-play"></div> 
-                <div id="next"         class="clickable nf nf-mdi-skip_next"></div>
+                <div tabIndex="-1" id="previous"     class="clickable nf nf-mdi-skip_previous"></div>
+                <div tabIndex="-1" id="pauseToggle"  class="clickable nf nf-fa-play"></div> 
+                <div tabIndex="-1" id="next"         class="clickable nf nf-mdi-skip_next"></div>
                 
                 <div class="seperator nf nf-indentation-line"></div>
                 
-                <div id="currentTrack"> - </div> 
-                <div id="currentSource"></div> 
-                <div id="seekBack"     class="clickable nf nf-fa-backward"></div>
-                <div id="progress"> - </div>
-                <div id="seekForward"  class="clickable nf nf-fa-forward"></div>
+                <div tabIndex="-1" id="currentTrack"> - </div> 
+                <div tabIndex="-1" id="currentSource"></div> 
+                <div tabIndex="-1" id="seekBack"     class="clickable nf nf-fa-backward"></div>
+                <div tabIndex="-1" id="progress"> - </div>
+                <div tabIndex="-1" id="seekForward"  class="clickable nf nf-fa-forward"></div>
 
                 <div class="seperator nf nf-indentation-line"></div>
 
-                <div id="volumeUp"      class="clickable nf nf-mdi-volume_plus"></div> 
-                <div id="volume"> - </div>
-                <div id="volumeDown"    class="clickable nf nf-mdi-volume_minus"></div>
+                <div tabIndex="-1" id="volumeUp"      class="clickable nf nf-mdi-volume_plus"></div> 
+                <div tabIndex="-1" id="volume"> - </div>
+                <div tabIndex="-1" id="volumeDown"    class="clickable nf nf-mdi-volume_minus"></div>
                 
-                <select id="localPlaylist">
-                </select>
-                
-                <select id="spotifyPlaylist">
-                </select>
+                <select tabIndex="-1" id="localPlaylist"></select>
+                <select tabindex="-1" id="spotifyPlaylist"></select>
 
             </div>
-            
+           
+            <table id="trackList">
+                <!-- [playing Source]      [Title] [Album] [Artist]        [Duration] -->
+                <thead>
+                    <th class="nf nf-fa-circle_o_notch"></th>
+                    <th class="nf nf-mdi-music"></th>
+                    <th class="nf nf-mdi-library_music"></th>
+                    <th class="nf nf-oct-person"></th>
+                    <th class="nf nf-mdi-timelapse"></th>
+                </thead>
+                <tbody></tbody>
+            </table>
+
+
             <!-- Dummy audio player -->
-            <audio id="dummy" controls loop>
-                <source src="resc/silence.m4a" type="audio/x-m4a">
-            </audio> 
+            <audio id="dummy" controls loop src="resc/silence.m4a"></audio> 
+            
             <!-- Local file player -->
-            <audio id="localPlayer" controls preload="auto">
-                <source id="localSource">
-            </audio> 
+            <audio id="localPlayer" controls preload></audio> 
 
             <!-- Spotify iframe injection script -->
             <script src="https://sdk.scdn.co/spotify-player.js"></script>

@@ -1,22 +1,38 @@
 
 const keyboardHandler = (event, player) => 
 {
-    console.log(`-------- ${event.key} | (shift:${event.shiftKey}) ----------`)   
+    // console.log(`-------- ${event.key} | (shift:${event.shiftKey}) ----------`)   
 
-    if ( event.key == CONFIG.pausePlay )
+    if (!event.shiftKey)
+    // Key bindings not requiring shift
     {
-        pauseToggle(player);
+        switch( event.key )
+        {
+            case CONFIG.scrollUp:
+                window.scroll(0 , window.scrollY - CONFIG.scrollPixels);
+                break;
+            case CONFIG.scrollDown:
+                window.scroll(0 , window.scrollY + CONFIG.scrollPixels);
+                break;
+            case CONFIG.scrollTop:
+                window.scrollTo(0,0);
+                break;
+            case CONFIG.pausePlay:
+                // Prevent <SPACE> from scrolling
+                event.preventDefault();
+                pauseToggle(player);
+                break;
+        }
     }
-    else if (event.shiftKey)
-    // All keybinds except SPACE require SHIFT to be held
+    else 
     {
         switch(event.key)
         {
             case CONFIG.volumeUp:
-                setSpotifyVolume(CONFIG.volumeStep);
+                setVolume(CONFIG.volumeStep);
                 break;
             case CONFIG.volumeDown:
-                setSpotifyVolume(-CONFIG.volumeStep);
+                setVolume(-CONFIG.volumeStep);
                 break;
             case CONFIG.next:
                 playNextTrack(player);
@@ -29,6 +45,9 @@ const keyboardHandler = (event, player) =>
                 break;
             case CONFIG.seekBack:
                 seekPlayback(-1);
+                break;
+            case CONFIG.scrollBottom:
+                window.scrollTo(0,document.querySelector("#trackList").scrollHeight);
                 break;
         }
     }
@@ -115,10 +134,10 @@ const clickHandler = (player) =>
             pauseToggle(player);    
             break;
         case 'volumeUp':
-            setSpotifyVolume(CONFIG.volumeStep);
+            setVolume(CONFIG.volumeStep);
             break;
         case 'volumeDown':
-            setSpotifyVolume(-CONFIG.volumeStep);
+            setVolume(-CONFIG.volumeStep);
             break;
         case 'previous':
             playPrevTrack(player);

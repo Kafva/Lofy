@@ -152,7 +152,7 @@ module.exports = (fastify,functions,CONFIG) =>
         // Use the URL parameters passed from STEP 2 
         // for access_token, refresh_token and expires_in on the client side
         // to make requests to the web API
-        res.view('/templates/index.ejs', { route: '/home' } );
+        res.view('/templates/index.ejs', { route: '/home', CONFIG: CONFIG } );
     })
     
     //**** OAuth STEP 4 *****/

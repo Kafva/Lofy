@@ -1,18 +1,24 @@
 // BUGS
 //  * Progress bar for Spotify bugs out
-//  * Seek on local files
+//  * Delete future history when switching playlists
+
+// * Cant rewind to a track not from the current playlist
 
 // TODO
+//  * Seek on local files does not work
+//  * Icon
 //  * Incontsicies when metadata fails to load from some songs
 //  * Server crashes sometimes when non-existant files are found in a playlist(?)
 //  ### Spotify
 //  ### Local files
+//      * Add to trackList
 //  ### Soundcloud
 //      * Currently not avaialable: https://soundcloud.com/you/apps/new
 //  ### Front-end
 //      * Sound wave
-//      * Mobile integration
-//      * Display (hidable) current playlist(s) with clickable elements to play a track
+//      * Mobile integration (Cordova)
+//      * Hidable playlist + current track cover
+//      * clickable playlist entries 
 
 
 //**** MEDIA KEYS *****/
@@ -35,7 +41,7 @@ const setupMediaMetadata = async () =>
             if (_json != undefined)
             {
                 artwork = [];
-                for (let item of _json['item']['album']['images'])
+                for (let item of _json.item.album.images)
                 {
                     artwork.push( { 
                         src: item.url, 
@@ -44,9 +50,9 @@ const setupMediaMetadata = async () =>
                     });
                 } 
                 navigator.mediaSession.metadata = new MediaMetadata({
-                    title: _json['item'].name,
-                    artist: _json['item']['artists'][0].name,
-                    album: _json['item']['album'].name,
+                    title: _json.item.name,
+                    artist: _json.item.artists[0].name,
+                    album: _json.item.album.name,
                     artwork: artwork
                 });
             }
@@ -62,7 +68,7 @@ const setupMediaMetadata = async () =>
                     album: track.album,
                     artwork: [
                         {
-                            src: `/cover/${ getCurrentPlaylist(LOCAL_SOURCE) }/${track.id}`,
+                            src: `/cover/${ getPlaylistOfCurrentTrack() }/${track.id}`,
                             sizes: `${track.cover.width || 0}x${track.cover.height || 0}`,
                             type: `image/${track.cover.type || 'png'}`
                         }
@@ -76,30 +82,49 @@ const setupMediaMetadata = async () =>
 
 //******** AUDIO SOURCE MANAGMENT *********/
 
+const setVolume = (diff,newPercent=null) =>
+{
+    switch(GLOBALS.currentSource)
+    {
+        case SPOTIFY_SOURCE:
+            setSpotifyVolume(diff,newPercent);
+            break;
+        case LOCAL_SOURCE:
+            setLocalVolume(diff,newPercent);
+            break;
+    }
+}
+
 const playNextTrack = async (player) =>
 {
-    // If we are at (historyPos:0) play a new random track
     // Otherwise play the next track from the history
     // and decrement the historyPos closer to the most recent track
     var nextTrackNum = null;
+    var playlistName = null;
 
-    if ( GLOBALS.historyPos != 0 )
+    if ( GLOBALS.historyPos == 0 )
+    // If we are at (historyPos:0) play a new random track
     {
+        source = audioSourceCoinflip();
+        playlistName = getCurrentPlaylist(source);
+    }
+    else
+    {
+        playlistName = HISTORY[ GLOBALS.historyPos - 1 ].playlist;
+        source = HISTORY[ GLOBALS.historyPos - 1 ].spotifyURI ? SPOTIFY_SOURCE : LOCAL_SOURCE;
         nextTrackNum = (getTrackHistoryJSON( --GLOBALS.historyPos )).trackNum ;
     }
     
-    switch ( audioSourceCoinflip() )
+    switch (source)
     {
         case SPOTIFY_SOURCE:
-            GLOBALS.currentSource = SPOTIFY_SOURCE;   
             document.querySelector("#localPlayer").pause();
-            playSpotifyTrack( getCurrentPlaylist(SPOTIFY_SOURCE), player, nextTrackNum );    
+            playSpotifyTrack( playlistName, player, nextTrackNum );    
             break;
         case LOCAL_SOURCE:
             // Pause Spotify and start playing from the local source
-            GLOBALS.currentSource = LOCAL_SOURCE;   
-            toggleSpotifyPlayback( getCurrentPlaylist(SPOTIFY_SOURCE), player, pauseOnly=true );
-            playNextLocalTrack(nextTrackNum);
+            toggleSpotifyPlayback( getCurrentPlaylist(SPOTIFY_SOURCE) , player, pauseOnly=true );
+            playNextLocalTrack(playlistName, nextTrackNum);
             break; 
     }
 }
@@ -119,7 +144,7 @@ const playPrevTrack = async (player) =>
         // Play previous track from spotify
         {
             document.querySelector("#localPlayer").pause();    
-            playSpotifyTrack( getCurrentPlaylist(SPOTIFY_SOURCE), player, prevTrack.trackNum );    
+            playSpotifyTrack( prevTrack.playlist, player, prevTrack.trackNum );    
         }
         else if ( prevTrack.trackNum != null )
         // Play previous track from local storage
@@ -131,13 +156,11 @@ const playPrevTrack = async (player) =>
             });
 
             // To play the previous local track we simply pass the prevTrack ID
-            playLocalTrack(prevTrack.trackNum);
+            playLocalTrack(prevTrack.playlist, prevTrack.trackNum);
         }
         else { console.error("Invalid previous track:", prevTrack); }
     }
     else { console.error(`No track in HISTORY to rewind to: (HISTORY.length:${HISTORY.length}, historyPos:${GLOBALS.historyPos})`); return; }
-
-
 }
 
 const pauseToggle = (player) =>
@@ -145,7 +168,7 @@ const pauseToggle = (player) =>
     switch(GLOBALS.currentSource)
     {
         case SPOTIFY_SOURCE:
-            toggleSpotifyPlayback(getCurrentPlaylist(SPOTIFY_SOURCE), player);
+            toggleSpotifyPlayback(getPlaylistOfCurrentTrack(), player);
             break;
         case LOCAL_SOURCE:
             toggleLocalPlayback();
@@ -158,17 +181,22 @@ const pauseToggle = (player) =>
 
 const seekPlayback = (direction) =>
 {
+    let p = null;
+
     switch(GLOBALS.currentSource)
     {
         case SPOTIFY_SOURCE:
             seekSpotifyPlayback( direction * CONFIG.seekStepMs);
-            document.querySelector("#dummy").currentTime += (direction * (CONFIG.seekStepMs/1000))
+            p = document.querySelector("#dummy");
             break;
         case LOCAL_SOURCE:
-            let p = document.querySelector("#localPlayer");
-            p.currentTime = p.currentTime + ( direction * (CONFIG.seekStepMs/1000) );
+            p = document.querySelector("#localPlayer");
             break;
     }
+
+    console.log( `Seek [start(),end()] = [${p.seekable.start(p.seekable.length - 1)},${p.seekable.end(p.seekable.length - 1)}] (sec)` );
+    p.currentTime = p.currentTime + ( direction * (CONFIG.seekStepMs/1000) );
+
 }
 
 const updateProgressIndicator = () =>
@@ -179,15 +207,17 @@ const updateProgressIndicator = () =>
     switch(GLOBALS.currentSource)
     {
         case SPOTIFY_SOURCE:
-            if ( GLOBALS.dummyProgressOffset.sec == -1) 
+            if ( GLOBALS.dummyProgressOffsetSec == -1) 
             {
                 console.error(`dummyProgressOffset unset: Can't show track progress`); 
                 return null;
             }
 
+            // Javascript modulo does not convert negative numbers into positive values i.e.
+            //  -40 % 60 ==> -40
             p = document.querySelector("#dummy");
-            sec = Math.floor( (p.currentTime % 60) - GLOBALS.dummyProgressOffset.sec);
-            min = Math.floor(( p.currentTime / 60) - GLOBALS.dummyProgressOffset.min);
+            sec = Math.floor( ( ( (p.currentTime - GLOBALS.dummyProgressOffsetSec) % 60 ) + 60 ) % 60 );
+            min = Math.floor(     (p.currentTime - GLOBALS.dummyProgressOffsetSec) / 60 );
             
             //if ( sec < 0 || min < 0 ){ min = 'err'; sec = 'err'; }
             if (sec <= 9){ sec = `0${sec}`; }
@@ -225,13 +255,64 @@ const updateCurrentTrackUI = async () =>
         case SPOTIFY_SOURCE:
             document.querySelector("#currentTrack").innerText = 
                 `${ (await getCurrentSpotifyTrack()).item.name }`;    
-            document.querySelector("#currentSource").setAttribute("class", CONFIG.spotifyIconCSS); 
             break;
         case LOCAL_SOURCE:
             document.querySelector("#currentTrack").innerText = 
                 `${ (await getCurrentLocalTrack() ).title}`;    
-            document.querySelector("#currentSource").setAttribute("class", CONFIG.localIconCSS); 
             break;
+    }
+    
+    document.querySelector("#currentSource").setAttribute("class", CONFIG.iconCSS[ GLOBALS.currentSource ] ); 
+}
+
+const addPlaylistTracksToUI = async (source) =>
+// Run 'onchange' for <select> and in Init()
+{
+    var entry = {};
+    var sec = null;
+    var index = 1;
+    rows = document.querySelectorAll("#trackList > tbody > tr");
+    if (rows != [] && rows != null)
+    {
+        for (let row of rows)
+        // Remove all tracks from the passed source before adding new entries
+        { 
+            if( row.querySelectorAll("td")[0].className.match(CONFIG.iconCSS[ source ]) )
+            // Use the iconCSS to determine the source
+            {
+                row.remove();
+            }
+        }
+    }
+
+    switch(source)
+    {
+        case SPOTIFY_SOURCE:
+            for (let _json of ((await getTracksJSON( getCurrentPlaylist(SPOTIFY_SOURCE) )) || []) )
+            {
+                sec = _json.track.duration_ms != null ? Math.floor(_json.track.duration_ms/1000) : 0;
+                
+                entry.title  = _json.track.name || CONFIG.unknown; 
+                entry.album  = _json.track.album.name || CONFIG.unknown;
+                entry.artist = _json.track.artists[0].name || CONFIG.unknown;
+                entry.duration = `${Math.floor(sec/60)}:${sec%60 <= 9 ? '0'+Math.floor(sec%60) : Math.floor(sec%60)}`;
+
+                addTrackToTable(source, entry, index++);
+            }
+            break;
+        case LOCAL_SOURCE:
+            for (let _json of ((await getLocalPlaylistJSON( getCurrentPlaylist(LOCAL_SOURCE) )) || {tracks: []}).tracks )
+            {
+                sec = _json.duration != null ? Math.floor(_json.duration) : 0;
+                
+                entry.title  = _json.title || CONFIG.unknown; 
+                entry.album  = _json.album || CONFIG.unknown;
+                entry.artist = _json.artist || CONFIG.unknown;
+                entry.duration = `${Math.floor(sec/60)}:${sec%60 <= 9 ? '0'+Math.floor(sec%60) : Math.floor(sec%60)}`;
+
+                addTrackToTable(source, entry, index++);
+            }
+        break;
     }
 }
 
@@ -256,13 +337,8 @@ const updateDummyPlayerStatus = (mode) =>
 const setDummyProgressOffset = () =>
 // We will update the progress indicator upon:
 //  * A new spotify track being played
-// and thats it
 {
-    GLOBALS.dummyProgressOffset = 
-    {
-        sec: Math.floor(document.querySelector("#dummy").currentTime % 60),
-        min: Math.floor(document.querySelector("#dummy").currentTime / 60),
-    }
+    GLOBALS.dummyProgressOffsetSec = document.querySelector("#dummy").currentTime; 
 }
 
 //********** HELPER *******//
@@ -285,11 +361,11 @@ const audioSourceCoinflip = () =>
 
     let total_tracks = 0;
     
-    for (let source of Object.keys( GLOBALS.playlistCount ) )
+    for (let source of Object.keys( GLOBALS.currentPlaylistCount ) )
     // Ensure that each playlist has a count and sum up the total number of tracks
     {
-        if ( GLOBALS.playlistCount[source] == null ) { updatePlaylistCount(source); }
-        total_tracks += GLOBALS.playlistCount[source];
+        if ( GLOBALS.currentPlaylistCount[source] == null ) { updatePlaylistCount(source); }
+        total_tracks += GLOBALS.currentPlaylistCount[source];
     }
 
     // The algorithm will give a fair disrubtion where every track has the same
@@ -301,9 +377,9 @@ const audioSourceCoinflip = () =>
     let outcome = Math.floor( Math.random() *  total_tracks )
     let _total = 0;
     
-    for (let source of Object.keys( GLOBALS.playlistCount ) )
+    for (let source of Object.keys( GLOBALS.currentPlaylistCount ) )
     {
-        _total += GLOBALS.playlistCount[source];
+        _total += GLOBALS.currentPlaylistCount[source];
         if ( outcome <= _total ) { return source; }
     }
 }
@@ -332,26 +408,32 @@ const getTrackHistoryJSON = (index=0) =>
 
 const updatePlaylistCount = async (audioSource) =>
 {
-    switch ( audioSource )
-    {
-        case SPOTIFY_SOURCE:
-            let _json =  await getPlaylistJSON( getCurrentPlaylist(SPOTIFY_SOURCE));
-            if (_json != null && _json != undefined)
-            {
-                GLOBALS.playlistCount.spotify = _json.tracks.total; 
-            }
-            break;
-        case LOCAL_SOURCE:
-            await updateLocalPlaylistCount();
-            break;
-        default:
-            console.error(`Unknown audioSource: ${audioSource}`);
-    }
-
-    if ( GLOBALS.playlistCount[audioSource] == null && 
-        getCurrentPlaylist(audioSource) != CONFIG.noContextOption )
+    if ( getCurrentPlaylist(audioSource) == CONFIG.noContextOption )
     { 
-        console.error(`Failed to update ${audioSource} count`); 
+        GLOBALS.currentPlaylistCount[audioSource] = 0; 
+    }
+    else
+    {
+        switch ( audioSource )
+        {
+            case SPOTIFY_SOURCE:
+                let _json =  await getPlaylistJSON( getCurrentPlaylist(SPOTIFY_SOURCE));
+                if (_json != null && _json != undefined)
+                {
+                    GLOBALS.currentPlaylistCount.spotify = _json.tracks.total; 
+                }
+                break;
+            case LOCAL_SOURCE:
+                await updateLocalPlaylistCount();
+                break;
+            default:
+                console.error(`Unknown audioSource: ${audioSource}`);
+        }
+
+        if ( GLOBALS.currentPlaylistCount[audioSource] == null )
+        { 
+            console.error(`Failed to update ${audioSource} count`); 
+        }
     }
 }
 
@@ -381,6 +463,28 @@ const addTrackToHistory = (source,trackNum,uri=null) =>
             ].concat(HISTORY);
             break;
     }
+}
+
+const addTrackToTable = (source, entry, tabIndex) =>
+{
+    row = document.createElement("tr");
+    row.setAttribute("tabIndex", tabIndex);
+    row.className = "clickable trackItem";
+    
+    // Create a 3-item array of <td> elements
+    columns = [...Array(CONFIG.tableColumns).keys()].map( () => document.createElement("td") );  
+    
+    // Set the class indicator for the spotify or local icon
+    columns[0].setAttribute( "class", CONFIG.iconCSS[ source ] );
+    
+    columns[0].innerText = "";
+    columns[1].innerText = entry.title;
+    columns[2].innerText = entry.album;
+    columns[3].innerText = entry.artist;
+    columns[4].innerText = entry.duration;
+
+    for(let c of columns) { row.appendChild(c); }
+    document.querySelector("#trackList > tbody").appendChild(row);
 }
 
 const getNewTrackNumber = (playlistLength,trackNum=null) =>
@@ -413,6 +517,15 @@ const dummyAudioHandler = (mode) =>
 
 //********* MISC *********//
 
+const getPlaylistOfCurrentTrack = () =>
+{
+    if ( HISTORY.length > GLOBALS.historyPos  )
+    {
+        return HISTORY[ GLOBALS.historyPos ].playlist;
+    }
+    else { console.error(`Not enough tracks in history to fetch ${GLOBALS.historyPos}`); }
+}
+
 const getCurrentPlaylist = (source = GLOBALS.currentSource) =>
 {
     switch(source)
@@ -424,7 +537,11 @@ const getCurrentPlaylist = (source = GLOBALS.currentSource) =>
             }
             else { return document.querySelector("#spotifyPlaylist").selectedOptions[0].innerText; }
         case LOCAL_SOURCE:
-            return document.querySelector("#localPlaylist").selectedOptions[0].innerText;
+            if ( document.querySelector("#localPlaylist").length == 0 )
+            {
+                console.error("No local playlists loaded");
+            }
+            else { return document.querySelector("#localPlaylist").selectedOptions[0].innerText; }
     }
 }
 

@@ -10,23 +10,35 @@ const CONFIG = {
     inactivePlayer: 'Player inactive',
     pauseClass: 'clickable nf nf-fa-pause',
     playClass: 'clickable nf nf-fa-play',
-    spotifyIconCSS: 'nf nf-fa-spotify',
-    localIconCSS: 'nf nf-mdi-file_music',
     noContextOption: '-',
     newTrackDelay: 1500,
     defaultAutoRepeatState: 'off',
+    tableColumns: 5,
+    unknown: 'Unknown',
+   
+    scrollPixels: 400,
+
+    iconCSS: {
+        [SPOTIFY_SOURCE]: 'nf nf-fa-spotify', 
+        [LOCAL_SOURCE]: 'nf nf-mdi-file_music'
+    },
     
     // The dummy track queued after every song to allow for an OK transisation between
     // local/spotify tracks (we cannot reliably pause the spotify player upon the end of a track)
     spotifySilence: "spotify:track:7cctPQS83y620UQtMd1ilL",
 
     //** Default config **/
-    defaultLocalPlaylist: 'dv',
-    defaultSpotifyPlaylist: '🌙',
+    defaultLocalPlaylist: 'purpose',
+    defaultSpotifyPlaylist: '💫',
 
     //** Shortcuts **/
-    // Each one except <SPACE> requires <SHIFT> as a modifier
     pausePlay: ' ',
+    scrollUp: 'k',
+    scrollDown: 'j',
+    scrollTop: 'g',
+    scrollBottom: 'G',
+
+    // With <SHIFT> modifier 
     previous: 'ArrowLeft',
     volumeDown: 'ArrowDown',
     next: 'ArrowRight',
@@ -45,18 +57,14 @@ var GLOBALS = {
         min: -1,
         sec: -1
     },
-    dummyProgressOffset: 
-    {
-        min: -1,
-        sec: -1
-    },
+    dummyProgressOffsetSec: -1, 
 
     mutexTaken: false,
 
     // Contains the number of tracks for the current playlist from each source
-    playlistCount: {
-        spotify: null,
-        local: null
+    currentPlaylistCount: {
+        [SPOTIFY_SOURCE]: null,
+        [LOCAL_SOURCE]: null
     },
 
     // The current history position

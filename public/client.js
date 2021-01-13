@@ -41,7 +41,21 @@ window.onSpotifyWebPlaybackSDKReady = () =>
         {
             // Set the global track counter
             updatePlaylistCount(SPOTIFY_SOURCE);
-            playNextTrack(player);
+
+            if ( getCurrentPlaylist(SPOTIFY_SOURCE) != CONFIG.noContextOption )
+            {
+                while ( GLOBALS.historyPos != 0 )
+                // Remove any 'future' items in the HISTORY to guarantee a new track
+                {
+                    HISTORY.shift();
+                    GLOBALS.historyPos--;
+                }
+
+                playNextTrack(player);
+            }
+
+            // Update the playlist UI with tracks from the current playlist (and remove previous tracks)
+            addPlaylistTracksToUI(SPOTIFY_SOURCE);
         });
 
         // Setup listeners for the dummy <audio> 
@@ -57,14 +71,34 @@ window.onSpotifyWebPlaybackSDKReady = () =>
 
         //****** Local Player **********/        
         setLocalPlaylistOptions();
-        InitLocalPlayer();
+        setLocalVolume(null,CONFIG.defaultPercent);
+        
+        (async ()=>
+        {
+            await updatePlaylistCount(LOCAL_SOURCE);
+            addPlaylistTracksToUI(LOCAL_SOURCE);
+        })();
 
         // Event listener for changes to the playlist <select> element
         document.querySelector("#localPlaylist").addEventListener('change', () => 
         { 
             // Set the global track counter
             updatePlaylistCount(LOCAL_SOURCE);
-            playNextTrack(player);
+            
+            if ( getCurrentPlaylist(LOCAL_SOURCE) != CONFIG.noContextOption )
+            {
+                while ( GLOBALS.historyPos != 0 )
+                // Remove any 'future' items in the HISTORY to guarantee a new track
+                {
+                    HISTORY.shift();
+                    GLOBALS.historyPos--;
+                }
+
+                playNextTrack(player);
+            }
+            
+            // Add tracks to the UI
+            addPlaylistTracksToUI(LOCAL_SOURCE);
         });
 
         document.querySelector("#localPlayer").addEventListener('ended', () => 

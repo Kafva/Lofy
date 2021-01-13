@@ -99,21 +99,26 @@ const InitSpotifyPlayer = async (player) =>
 
     // Update the playlist track counter
     updatePlaylistCount(SPOTIFY_SOURCE);
+
+    // Add the tracks from the playlist to the UI
+    addPlaylistTracksToUI(SPOTIFY_SOURCE);
 }
 
 const playSpotifyTrack = async (playlistName, player, trackNum=null) => 
 // Start playback with a random track from the provided playlist followed by silence
 // If a prevIndex from HISTORY is provided the corresponding track from the playlist will be chosen
 {
-    if (playlistName == CONFIG.noContextOption) { console.error("No active Spotify playlist!"); return null; }
-    var track = null;
+    GLOBALS.currentSource = SPOTIFY_SOURCE;
 
+    // TODO this line should not be needed
+    if (playlistName == CONFIG.noContextOption) { console.error(`Can't play tracks from '${CONFIG.noContextOption}'`); return null; }
+    var track = null;
     tracks_json   = await getTracksJSON(playlistName);
     
     if ( trackNum == null )
     /* (historyPos:0) ==> Play a new track */
     {
-        trackNum = getNewTrackNumber( GLOBALS.playlistCount.spotify );
+        trackNum = getNewTrackNumber( GLOBALS.currentPlaylistCount.spotify );
    
         // If we are playing a new track we should add it to the HISTORY
         addTrackToHistory(SPOTIFY_SOURCE, trackNum, tracks_json[trackNum].track.uri); 
@@ -121,7 +126,6 @@ const playSpotifyTrack = async (playlistName, player, trackNum=null) =>
     /* (historyPos >= 1) ==> Play next track in HISTORY */
     // The next track is guaranteed to be a Spotify track from the base selection in `playPrevTrack()`
     // and is passed as an argument
-    
     
     track     = tracks_json[trackNum].track; 
     
@@ -155,6 +159,9 @@ const playSpotifyTrack = async (playlistName, player, trackNum=null) =>
         sec: sec,
         min: Math.floor((track.duration_ms/1000)/60) 
     } 
+
+    // Update the volume indicator (relevant after a switch from the localPlayer)
+    document.querySelector("#volume").innerText = `${ Math.floor( (await getPlayerJSON()).device.volume_percent ) } %`;
 
     // Setup media Session metadata
     setupMediaMetadata();
@@ -244,7 +251,7 @@ const setSpotifyVolume = async (diff, newPercent=null ) =>
                 headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
             });
 
-            document.querySelector("#volume").innerText = `${newPercent} %`
+            document.querySelector("#volume").innerText = `${newPercent} %`;
         }
         else { console.log(`setSpotifyVolume(): invalid percent ${newPercent}`); }
         
@@ -343,14 +350,18 @@ const getPlayerJSON = async () =>
 
 const getTracksJSON = async (playlistName) =>
 {
+    if ( playlistName == CONFIG.noContextOption ){ return null; }
     playlist_json = await getPlaylistJSON(playlistName);
     
     // The API only allows for 100 tracks to be returned per request, we must therefore issue several fetches
     // to aquire all the tracks of a playlist
-    if ( GLOBALS.playlistCount.spotify == null ){ updatePlaylistCount(SPOTIFY_SOURCE); }
+    if ( GLOBALS.currentPlaylistCount.spotify == null && getCurrentPlaylist(SPOTIFY_SOURCE) == playlistName )
+    { 
+        updatePlaylistCount(SPOTIFY_SOURCE); 
+    }
     let tracks = [];
     
-    while ( tracks.length < GLOBALS.playlistCount.spotify )
+    while ( tracks.length < playlist_json.tracks.total )
     {
         let res = await fetch(`https://api.spotify.com/v1/playlists/${playlist_json.id}/tracks?offset=${tracks.length}`, {
             method: 'GET',
