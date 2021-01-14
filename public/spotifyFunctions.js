@@ -101,7 +101,7 @@ const InitSpotifyPlayer = async (player) =>
     updatePlaylistCount(SPOTIFY_SOURCE);
 
     // Add the tracks from the playlist to the UI
-    addPlaylistTracksToUI(SPOTIFY_SOURCE);
+    addPlaylistTracksToUI(SPOTIFY_SOURCE, player);
 }
 
 const playSpotifyTrack = async (playlistName, player, trackNum=null) => 

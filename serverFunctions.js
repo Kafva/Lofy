@@ -253,7 +253,7 @@ module.exports = (CONFIG) =>
         {
             track_count = await getLineCount( `${CONFIG.local_playlists_dir}/${req.params.playlist}.txt` );
 
-            if ( parseInt(req.params.trackNum) <= track_count )
+            if ( parseInt(req.params.trackNum) <= track_count && parseInt(req.params.trackNum) > 0 )
             {
                 // Fetch the .trackNum line from the playlist text file with the path to the sound file
                 let tracks = (await fs.promises.readFile(`${CONFIG.local_playlists_dir}/${req.params.playlist}.txt`, 'utf-8')).toString().split('\n');

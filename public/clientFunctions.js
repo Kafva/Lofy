@@ -5,6 +5,8 @@
 // * Cant rewind to a track not from the current playlist
 
 // TODO
+//  * Replace amp on pause
+//  * Make amp not stolen
 //  * Seek on local files does not work
 //  * Icon
 //  * Incontsicies when metadata fails to load from some songs
@@ -115,18 +117,7 @@ const playNextTrack = async (player) =>
         nextTrackNum = (getTrackHistoryJSON( --GLOBALS.historyPos )).trackNum ;
     }
     
-    switch (source)
-    {
-        case SPOTIFY_SOURCE:
-            document.querySelector("#localPlayer").pause();
-            playSpotifyTrack( playlistName, player, nextTrackNum );    
-            break;
-        case LOCAL_SOURCE:
-            // Pause Spotify and start playing from the local source
-            toggleSpotifyPlayback( getCurrentPlaylist(SPOTIFY_SOURCE) , player, pauseOnly=true );
-            playNextLocalTrack(playlistName, nextTrackNum);
-            break; 
-    }
+    playTrackFromIndex(source, player, playlistName, nextTrackNum);
 }
 
 const playPrevTrack = async (player) =>
@@ -250,27 +241,56 @@ const updateProgressIndicator = () =>
 
 const updateCurrentTrackUI = async () =>
 {
+    var trackName   = null;
+    var artist      = null;
+    var album       = null;
     switch(GLOBALS.currentSource)
     {
         case SPOTIFY_SOURCE:
-            document.querySelector("#currentTrack").innerText = 
-                `${ (await getCurrentSpotifyTrack()).item.name }`;    
+                track       = (await getCurrentSpotifyTrack() ).item;
+                trackName   = track.name || CONFIG.unknown;
+                album       = track.album.name || CONFIG.unknown;
+                artist      = track.album.artists[0].name || CONFIG.unknown;
             break;
         case LOCAL_SOURCE:
-            document.querySelector("#currentTrack").innerText = 
-                `${ (await getCurrentLocalTrack() ).title}`;    
+                track       = await getCurrentLocalTrack();
+                trackName   = track.title || CONFIG.unknown;
+                album       = track.album || CONFIG.unknown;
+                artist      = track.artist || CONFIG.unknown;
             break;
     }
     
+    rows = document.querySelectorAll("#trackList > tbody > tr");
+    if (rows != [] && rows != null)
+    {
+        for (let row of rows)
+        // Update the playlist UI to show the current track (if it exists in the UI)
+        { 
+            if ( row.querySelectorAll("td")[0].className.match( CONFIG.currentTrackCSS ) )
+            // and remove the pulse effect from any other tracks
+            {
+                row.querySelectorAll("td")[0].className = 
+                    row.querySelectorAll("td")[0].className.replaceAll( ` ${CONFIG.currentTrackCSS}`, "" );
+            }
+            
+            if( row.querySelectorAll("td")[1].innerText == trackName && 
+            row.querySelectorAll("td")[2].innerText == album &&
+            row.querySelectorAll("td")[3].innerText == artist  )
+            {
+                row.querySelectorAll("td")[0].className += ` ${CONFIG.currentTrackCSS}`;
+            }
+        }
+    }
+
+    document.querySelector("#currentTrack").innerText = trackName;
     document.querySelector("#currentSource").setAttribute("class", CONFIG.iconCSS[ GLOBALS.currentSource ] ); 
 }
 
-const addPlaylistTracksToUI = async (source) =>
+const addPlaylistTracksToUI = async (source, player) =>
 // Run 'onchange' for <select> and in Init()
 {
     var entry = {};
     var sec = null;
-    var index = 1;
     rows = document.querySelectorAll("#trackList > tbody > tr");
     if (rows != [] && rows != null)
     {
@@ -285,35 +305,55 @@ const addPlaylistTracksToUI = async (source) =>
         }
     }
 
+    var index = null;
     switch(source)
     {
         case SPOTIFY_SOURCE:
+            index = 0;
             for (let _json of ((await getTracksJSON( getCurrentPlaylist(SPOTIFY_SOURCE) )) || []) )
             {
                 sec = _json.track.duration_ms != null ? Math.floor(_json.track.duration_ms/1000) : 0;
                 
-                entry.title  = _json.track.name || CONFIG.unknown; 
-                entry.album  = _json.track.album.name || CONFIG.unknown;
-                entry.artist = _json.track.artists[0].name || CONFIG.unknown;
-                entry.duration = `${Math.floor(sec/60)}:${sec%60 <= 9 ? '0'+Math.floor(sec%60) : Math.floor(sec%60)}`;
+                entry.title      = _json.track.name || CONFIG.unknown; 
+                entry.album      = _json.track.album.name || CONFIG.unknown;
+                entry.artist     = _json.track.artists[0].name || CONFIG.unknown;
+                entry.duration   = `${Math.floor(sec/60)}:${sec%60 <= 9 ? '0'+Math.floor(sec%60) : Math.floor(sec%60)}`;
 
-                addTrackToTable(source, entry, index++);
+                addTrackToTable(source, player, entry, index++);
             }
             break;
         case LOCAL_SOURCE:
+            index = 1;    
             for (let _json of ((await getLocalPlaylistJSON( getCurrentPlaylist(LOCAL_SOURCE) )) || {tracks: []}).tracks )
             {
                 sec = _json.duration != null ? Math.floor(_json.duration) : 0;
                 
-                entry.title  = _json.title || CONFIG.unknown; 
-                entry.album  = _json.album || CONFIG.unknown;
-                entry.artist = _json.artist || CONFIG.unknown;
+                entry.title    = _json.title || CONFIG.unknown; 
+                entry.album    = _json.album || CONFIG.unknown;
+                entry.artist   = _json.artist || CONFIG.unknown;
                 entry.duration = `${Math.floor(sec/60)}:${sec%60 <= 9 ? '0'+Math.floor(sec%60) : Math.floor(sec%60)}`;
 
-                addTrackToTable(source, entry, index++);
+                addTrackToTable(source, player, entry, index++);
             }
         break;
     }
+}
+
+const playTrackFromIndex = (source, player, playlistName, trackNum) =>
+{
+    switch (source)
+    {
+        case SPOTIFY_SOURCE:
+            document.querySelector("#localPlayer").pause();
+            playSpotifyTrack( playlistName, player, trackNum );    
+            break;
+        case LOCAL_SOURCE:
+            // Pause Spotify and start playing from the local source
+            toggleSpotifyPlayback( getCurrentPlaylist(SPOTIFY_SOURCE) , player, pauseOnly=true );
+            playNextLocalTrack(playlistName, trackNum);
+            break; 
+    }
+
 }
 
 //***** DUMMY PLAYER *******//
@@ -465,11 +505,14 @@ const addTrackToHistory = (source,trackNum,uri=null) =>
     }
 }
 
-const addTrackToTable = (source, entry, tabIndex) =>
+const addTrackToTable = (source, player, entry, index) =>
 {
     row = document.createElement("tr");
-    row.setAttribute("tabIndex", tabIndex);
+    row.setAttribute("tabIndex", index);
     row.className = "clickable trackItem";
+
+    // Hook up each entry to play the indicated track when clicked
+    row.onclick = () => playTrackFromIndex( source, player, getCurrentPlaylist(source), index ); 
     
     // Create a 3-item array of <td> elements
     columns = [...Array(CONFIG.tableColumns).keys()].map( () => document.createElement("td") );  

@@ -55,7 +55,7 @@ window.onSpotifyWebPlaybackSDKReady = () =>
             }
 
             // Update the playlist UI with tracks from the current playlist (and remove previous tracks)
-            addPlaylistTracksToUI(SPOTIFY_SOURCE);
+            addPlaylistTracksToUI(SPOTIFY_SOURCE, player);
         });
 
         // Setup listeners for the dummy <audio> 
@@ -76,7 +76,7 @@ window.onSpotifyWebPlaybackSDKReady = () =>
         (async ()=>
         {
             await updatePlaylistCount(LOCAL_SOURCE);
-            addPlaylistTracksToUI(LOCAL_SOURCE);
+            addPlaylistTracksToUI(LOCAL_SOURCE, player);
         })();
 
         // Event listener for changes to the playlist <select> element
@@ -98,7 +98,7 @@ window.onSpotifyWebPlaybackSDKReady = () =>
             }
             
             // Add tracks to the UI
-            addPlaylistTracksToUI(LOCAL_SOURCE);
+            addPlaylistTracksToUI(LOCAL_SOURCE, player);
         });
 
         document.querySelector("#localPlayer").addEventListener('ended', () => 

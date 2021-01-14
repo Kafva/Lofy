@@ -18,6 +18,8 @@ const CONFIG = {
    
     scrollPixels: 400,
 
+    currentTrackCSS: "amp",
+
     iconCSS: {
         [SPOTIFY_SOURCE]: 'nf nf-fa-spotify', 
         [LOCAL_SOURCE]: 'nf nf-mdi-file_music'
@@ -29,7 +31,7 @@ const CONFIG = {
 
     //** Default config **/
     defaultLocalPlaylist: 'purpose',
-    defaultSpotifyPlaylist: '💫',
+    defaultSpotifyPlaylist: '✨',
 
     //** Shortcuts **/
     pausePlay: ' ',

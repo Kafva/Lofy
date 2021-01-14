@@ -16,7 +16,8 @@
 	/* COLORS */    
     --bar: #131314;
     --bkg: #1a1c1f;
-	--text: #d1d2d2;
+    --text: #d1d2d2;
+    --tint: #bb92ac;
 }
 
 
@@ -72,6 +73,7 @@ body
     margin: 10px;
 }
 
+
 /********** Track list **********/
 #trackList
 {
@@ -100,7 +102,27 @@ body
     border-bottom: 1px solid rgba(65, 64, 64, 0.5)
 }
 
+.trackItem:hover
+{
+    border: 1px solid var(--tint);
+    background-color: rgba(69, 69, 75, 0.5);
+    opacity: 0.5;
+}
+
+.amp
+{
+    content: url("resc/amp.gif");
+    align-content: center;
+    height: 20px;
+    width: 20px;
+}
+
 td,th { padding-right: 14px;  }
+thead
+{
+    margin-bottom: 5px;
+    border-bottom: 1px solid rgba(65, 64, 64, 0.5)
+}
 
 .clickable
 {
@@ -108,9 +130,3 @@ td,th { padding-right: 14px;  }
 }
 
 audio { display: none; }
-
-/*#dummy
-{ 
-    position: fixed;
-    top: 700px;
-}*/
