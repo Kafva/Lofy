@@ -1,11 +1,13 @@
 // BUGS
 //  * Progress bar for Spotify bugs out
+//  * Amp doesn't appear (on SIMCITY)
 //  * Delete future history when switching playlists
-
 // * Cant rewind to a track not from the current playlist
 
 // TODO
 //  * Replace amp on pause
+//  * MacOS 'service'
+//  * Rename to Lofy
 //  * Make amp not stolen
 //  * Seek on local files does not work
 //  * Icon

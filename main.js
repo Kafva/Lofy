@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-const SERVER = "cloudify";
+const SERVER = "lofy";
 const PORT = 3443;
 
 //********* DEBUGGING **********/

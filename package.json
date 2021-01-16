@@ -1,5 +1,5 @@
 {
-  "name": "cloudify",
+  "name": "lofy",
   "version": "1.0.0",
   "description": "Web player for Spotify (+)",
   "main": "main.js",
@@ -20,6 +20,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Kafva/Cloudify.git"
+    "url": "https://github.com/Kafva/Lofy.git"
   }
 }

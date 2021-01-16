@@ -29,7 +29,7 @@ default_ca	= CA_Root		# The default ca section (does not need to match the CN)
 ####################################################################
 [ CA_Root ]
 
-dir		= /Users/jonas/XcodeX/Pparker/Cloudify/ssl	# Where everything is kept
+dir		= /Users/jonas/XcodeX/Pparker/Lofy/ssl	# Where everything is kept
 certs		= $dir/certs		# Where the issued certs are kept
 crl_dir		= $dir/crl		# Where the issued crl are kept
 database	= $dir/index.txt	# database index file.
@@ -126,7 +126,7 @@ stateOrProvinceName_default	= X
 localityName			= Locality Name (eg, city)
 
 0.organizationName		= Organization Name (eg, company)
-0.organizationName_default	= Cloudify Org
+0.organizationName_default	= Lofy Org
 organizationalUnitName		= Organizational Unit Name (eg, section)
 
 commonName			= Common Name (e.g. server FQDN or YOUR name)
@@ -153,7 +153,7 @@ unstructuredName		= An optional company name
 basicConstraints=CA:FALSE
 
 ## Custom ##
-subjectAltName          = DNS:cloudify
+subjectAltName          = DNS:lofy
 certificatePolicies     = 1.2.3.4
 ############
 

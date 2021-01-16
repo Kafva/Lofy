@@ -6,7 +6,7 @@ const CONFIG = {
     volumeStep: 5,
     seekStepMs: 5000, // (ms)
     defaultPercent: 20,
-    playerName: 'Cloudify Player',
+    playerName: 'Lofy',
     inactivePlayer: 'Player inactive',
     pauseClass: 'clickable nf nf-fa-pause',
     playClass: 'clickable nf nf-fa-play',

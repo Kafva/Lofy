@@ -18,3 +18,4 @@ ssl/*
 local/*
 playlists/*
 public/*-font/
+nohup.out
