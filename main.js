@@ -2,12 +2,6 @@
 const SERVER = "lofy";
 const PORT = 3443;
 
-//********* DEBUGGING **********/
-//		tshark -i en0 -Y "http.request || http.response" tcp port 443 or 80
-//		curl http://localhost:3443/callback?state=333&code=deadbeef
-//		Object.keys() ~ dir()
-//******************************/
-
 //******** ASYNC SETUP **********/
 // To wait for the readFile() operation to complete we start
 // the app in an async function. To make it so that `fs.` functions return

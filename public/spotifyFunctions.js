@@ -104,14 +104,12 @@ const InitSpotifyPlayer = async (player) =>
     addPlaylistTracksToUI(SPOTIFY_SOURCE, player);
 }
 
-const playSpotifyTrack = async (playlistName, player, trackNum=null) => 
+const playSpotifyTrack = async (playlistName, player, trackNum=null, addToHistory=true) => 
 // Start playback with a random track from the provided playlist followed by silence
 // If a prevIndex from HISTORY is provided the corresponding track from the playlist will be chosen
 {
     GLOBALS.currentSource = SPOTIFY_SOURCE;
 
-    // TODO this line should not be needed
-    if (playlistName == CONFIG.noContextOption) { console.error(`Can't play tracks from '${CONFIG.noContextOption}'`); return null; }
     var track = null;
     tracks_json   = await getTracksJSON(playlistName);
     
@@ -121,15 +119,19 @@ const playSpotifyTrack = async (playlistName, player, trackNum=null) =>
         trackNum = getNewTrackNumber( GLOBALS.currentPlaylistCount.spotify );
    
         // If we are playing a new track we should add it to the HISTORY
-        addTrackToHistory(SPOTIFY_SOURCE, trackNum, tracks_json[trackNum].track.uri); 
+        // but we should also add explicitly played tracks to the HISTORY         
     }
+
+    console.log("Playing new track:", addToHistory, trackNum, tracks_json);
+    if (addToHistory){ addTrackToHistory(SPOTIFY_SOURCE, trackNum, tracks_json[trackNum].track.uri); }
+
     /* (historyPos >= 1) ==> Play next track in HISTORY */
     // The next track is guaranteed to be a Spotify track from the base selection in `playPrevTrack()`
     // and is passed as an argument
     
     track     = tracks_json[trackNum].track; 
     
-    console.log(`Track JSON for ${track.name}:`, track);
+    console.log(`Track JSON for ${track.name}:`, trackNum, track);
 
     // Start playback 
     await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${player._options.id}`, {
@@ -147,7 +149,7 @@ const playSpotifyTrack = async (playlistName, player, trackNum=null) =>
     updateCurrentTrackUI();
 
     // Start the dummy player and set a value for the dummyProgressOffset
-    updateDummyPlayerStatus('play');
+    updateDummyPlayerStatus(CONFIG.dummyPlay);
     setDummyProgressOffset();
 
     // Set a value for the duration on the progress bar
@@ -206,7 +208,7 @@ const toggleSpotifyPlayback = async (playlistName, player, pauseOnly=false) =>
                         method: 'PUT',
                         headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
                     });
-                    updateDummyPlayerStatus('pause');
+                    updateDummyPlayerStatus(CONFIG.dummyPause);
                 }
                 else
                 {
@@ -216,7 +218,7 @@ const toggleSpotifyPlayback = async (playlistName, player, pauseOnly=false) =>
                             method: 'PUT',
                             headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
                         });
-                        updateDummyPlayerStatus('play');
+                        updateDummyPlayerStatus(CONFIG.dummyPlay);
                     }
                 }
             }

@@ -10,11 +10,14 @@ const CONFIG = {
     inactivePlayer: 'Player inactive',
     pauseClass: 'clickable nf nf-fa-pause',
     playClass: 'clickable nf nf-fa-play',
+    rowClass: 'clickable trackItem',
     noContextOption: '-',
     newTrackDelay: 1500,
     defaultAutoRepeatState: 'off',
     tableColumns: 5,
     unknown: 'Unknown',
+    dummyPlay: 'play',
+    dummyPause: 'pause',
    
     scrollPixels: 400,
 

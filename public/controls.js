@@ -1,7 +1,7 @@
 
 const keyboardHandler = (event, player) => 
 {
-    // console.log(`-------- ${event.key} | (shift:${event.shiftKey}) ----------`)   
+    //console.log(`-------- ${event.key} | (shift:${event.shiftKey}) ----------`)   
 
     if (!event.shiftKey)
     // Key bindings not requiring shift
@@ -57,7 +57,7 @@ const mediaHandlers = (player) =>
 {
     if ('mediaSession' in navigator) 
     {
-        navigator.mediaSession.setActionHandler('play', async () => 
+        navigator.mediaSession.setActionHandler(CONFIG.dummyPlay, async () => 
         { 
             console.log(`----PLAY---- (${navigator.mediaSession.playbackState})`); 
             
@@ -78,15 +78,14 @@ const mediaHandlers = (player) =>
                             headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
                         });
                     }
+                    updateDummyPlayerStatus(CONFIG.dummyPlay);
                     break;
                 case LOCAL_SOURCE:
                     toggleLocalPlayback();
                     break;
             }
-            
-            updateDummyPlayerStatus('play');
         });
-        navigator.mediaSession.setActionHandler('pause', async () => 
+        navigator.mediaSession.setActionHandler(CONFIG.dummyPause, async () => 
         { 
             console.log(`----PAUSE---- (${navigator.mediaSession.playbackState})`); 
            
@@ -106,12 +105,12 @@ const mediaHandlers = (player) =>
                             headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
                         });
                     }
+                    updateDummyPlayerStatus(CONFIG.dummyPause);
                     break;
                 case LOCAL_SOURCE:
                     toggleLocalPlayback();
                     break;
             }
-            updateDummyPlayerStatus('pause');
         });
         navigator.mediaSession.setActionHandler('previoustrack', () => 
         { 

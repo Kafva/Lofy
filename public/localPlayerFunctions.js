@@ -62,7 +62,7 @@ const setLocalPlaylistOptions = async () =>
     }
 }
 
-const playNextLocalTrack = (playlistName,trackNum=null) => 
+const playNextLocalTrack = (playlistName,trackNum=null, addToHistory=true) => 
 {
     // When picking the track to play we ensure that no track from the history is picked
     // if all tracks have been played, clear the history
@@ -71,9 +71,9 @@ const playNextLocalTrack = (playlistName,trackNum=null) =>
     /* (historyPos:0) ==> Play a new track (and add it to the HISTORY) */
     {
         trackNum = getNewTrackNumber( GLOBALS.currentPlaylistCount.local );
-
-        addTrackToHistory(LOCAL_SOURCE, trackNum);
     }
+
+    if(addToHistory){ addTrackToHistory(LOCAL_SOURCE, trackNum); }
 
     // Play the given track
     playLocalTrack(playlistName, trackNum);
@@ -91,15 +91,15 @@ const getCurrentLocalTrack = async () =>
         }
         catch (e) { console.error(e); return null; }
     }
-    else { console.error(`getCurrentLocalTrack(): getLocalPlaylistJSON ==> ${playlists}`); }
+    else { console.error("getCurrentLocalTrack(): getLocalPlaylistJSON ==>", playlist); }
 
 }
 
 const toggleLocalPlayback = () =>
 {
     let p = document.querySelector("#localPlayer");
-    if (p.paused) { p.play();  updateDummyPlayerStatus('play');  }
-    else          { p.pause(); updateDummyPlayerStatus('pause'); }
+    if (p.paused) { p.play();  updateDummyPlayerStatus(CONFIG.dummyPlay);  }
+    else          { p.pause(); updateDummyPlayerStatus(CONFIG.dummyPause); }
 }
 
 const setLocalVolume = (diff, newPercent=null) =>
@@ -140,7 +140,7 @@ const playLocalTrack = async (playlistName, trackNum) =>
         min: Math.floor(document.querySelector("#localPlayer").duration / 60)
     }
 
-    updateDummyPlayerStatus('play');
+    updateDummyPlayerStatus(CONFIG.dummyPlay);
     updateCurrentTrackUI();
 
     // Update volume indicator

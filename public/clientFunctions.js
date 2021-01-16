@@ -1,30 +1,3 @@
-// BUGS
-//  * Progress bar for Spotify bugs out
-//  * Amp doesn't appear (on SIMCITY)
-//  * Delete future history when switching playlists
-// * Cant rewind to a track not from the current playlist
-
-// TODO
-//  * Replace amp on pause
-//  * MacOS 'service'
-//  * Rename to Lofy
-//  * Make amp not stolen
-//  * Seek on local files does not work
-//  * Icon
-//  * Incontsicies when metadata fails to load from some songs
-//  * Server crashes sometimes when non-existant files are found in a playlist(?)
-//  ### Spotify
-//  ### Local files
-//      * Add to trackList
-//  ### Soundcloud
-//      * Currently not avaialable: https://soundcloud.com/you/apps/new
-//  ### Front-end
-//      * Sound wave
-//      * Mobile integration (Cordova)
-//      * Hidable playlist + current track cover
-//      * clickable playlist entries 
-
-
 //**** MEDIA KEYS *****/
 // The spotify <iframe> contains the actual web player and its own mediaSession object which we can't access due to SOP
 // https://github.com/spotify/web-playback-sdk/issues/105
@@ -33,7 +6,6 @@
 // As a work-around we use a dummy <audio> object which we register `ActionHandlers` for,
 // the spotify iframe will still catch <PAUSE> events but our own dummy object will be notified
 // as well when this occurs. 
-
 
 const setupMediaMetadata = async () =>
 // Setup metadata for mediaSession
@@ -137,7 +109,7 @@ const playPrevTrack = async (player) =>
         // Play previous track from spotify
         {
             document.querySelector("#localPlayer").pause();    
-            playSpotifyTrack( prevTrack.playlist, player, prevTrack.trackNum );    
+            playSpotifyTrack( prevTrack.playlist, player, prevTrack.trackNum, addToHistory=false);    
         }
         else if ( prevTrack.trackNum != null )
         // Play previous track from local storage
@@ -149,7 +121,7 @@ const playPrevTrack = async (player) =>
             });
 
             // To play the previous local track we simply pass the prevTrack ID
-            playLocalTrack(prevTrack.playlist, prevTrack.trackNum);
+            playLocalTrack(prevTrack.playlist, prevTrack.trackNum, addToHistory=false);
         }
         else { console.error("Invalid previous track:", prevTrack); }
     }
@@ -191,6 +163,43 @@ const seekPlayback = (direction) =>
     p.currentTime = p.currentTime + ( direction * (CONFIG.seekStepMs/1000) );
 
 }
+
+const playTrackFromIndex = (source, player, playlistName, trackNum) =>
+{
+    if ( document.querySelector("#pauseToggle").className == CONFIG.playClass && HISTORY.length > 0)
+    // Check if the player is currently paused
+    {
+        // If the track that is about to be played is the same as the current track
+        // and the player is paused, we resume playback instead of restarting it
+        // (applicable for clicking a paused track in the playlists)
+        
+        _source = HISTORY[ GLOBALS.historyPos ].spotifyURI ? SPOTIFY_SOURCE : LOCAL_SOURCE;
+
+        if (HISTORY[ GLOBALS.historyPos ].playlist == playlistName && 
+            HISTORY[ GLOBALS.historyPos ].trackNum == trackNum &&
+            _source == source )
+        {
+            pauseToggle(player);
+        }
+    }
+    else
+    {
+        switch (source)
+        {
+            case SPOTIFY_SOURCE:
+                document.querySelector("#localPlayer").pause();
+                playSpotifyTrack( playlistName, player, trackNum );    
+                break;
+            case LOCAL_SOURCE:
+                // Pause Spotify and start playing from the local source
+                toggleSpotifyPlayback( getCurrentPlaylist(SPOTIFY_SOURCE) , player, pauseOnly=true );
+                playNextLocalTrack(playlistName, trackNum);
+                break; 
+        }
+    }
+}
+
+//********* UI **************//
 
 const updateProgressIndicator = () =>
 {
@@ -252,7 +261,7 @@ const updateCurrentTrackUI = async () =>
                 track       = (await getCurrentSpotifyTrack() ).item;
                 trackName   = track.name || CONFIG.unknown;
                 album       = track.album.name || CONFIG.unknown;
-                artist      = track.album.artists[0].name || CONFIG.unknown;
+                artist      = track.artists[0].name || CONFIG.unknown;
             break;
         case LOCAL_SOURCE:
                 track       = await getCurrentLocalTrack();
@@ -272,9 +281,9 @@ const updateCurrentTrackUI = async () =>
             // and remove the pulse effect from any other tracks
             {
                 row.querySelectorAll("td")[0].className = 
-                    row.querySelectorAll("td")[0].className.replaceAll( ` ${CONFIG.currentTrackCSS}`, "" );
+                    row.querySelectorAll("td")[0].className.replace( CONFIG.currentTrackCSS, "" );
             }
-            
+
             if( row.querySelectorAll("td")[1].innerText == trackName && 
             row.querySelectorAll("td")[2].innerText == album &&
             row.querySelectorAll("td")[3].innerText == artist  )
@@ -341,21 +350,44 @@ const addPlaylistTracksToUI = async (source, player) =>
     }
 }
 
-const playTrackFromIndex = (source, player, playlistName, trackNum) =>
+const togglePauseTrackUI = (mode) =>
 {
-    switch (source)
+    rows = document.querySelectorAll("#trackList > tbody > tr");
+    
+    if (rows != [] && rows != null)
     {
-        case SPOTIFY_SOURCE:
-            document.querySelector("#localPlayer").pause();
-            playSpotifyTrack( playlistName, player, trackNum );    
-            break;
-        case LOCAL_SOURCE:
-            // Pause Spotify and start playing from the local source
-            toggleSpotifyPlayback( getCurrentPlaylist(SPOTIFY_SOURCE) , player, pauseOnly=true );
-            playNextLocalTrack(playlistName, trackNum);
-            break; 
+        switch(mode)
+        {
+            case CONFIG.dummyPause:
+                // Change the track with the currentTrackCSS to have a play icon when pausing playback
+                    for (let row of rows)
+                    { 
+                        if ( row.querySelectorAll("td")[0].className.match( CONFIG.currentTrackCSS ) )
+                        {
+                            console.log("Adding playIcon!", row);
+                            let _className  = row.querySelectorAll("td")[0].className
+                            
+                            _className      = _className.replace(CONFIG.currentTrackCSS, CONFIG.playClass);
+                            
+                            row.querySelectorAll("td")[0].className = _className;
+                        }
+                    }
+                break;
+            case CONFIG.dummyPlay:
+                // Replace the playIcon with the currentTrackCSS when resuming playback
+                for (let row of rows)
+                { 
+                    if ( row.querySelectorAll("td")[0].className.match( CONFIG.playClass ) )
+                    {
+                        console.log("Removing playIcon!", row);
+                        let _className  = row.querySelectorAll("td")[0].className
+                        _className      = _className.replace(CONFIG.playClass , CONFIG.currentTrackCSS);
+                        row.querySelectorAll("td")[0].className = _className;
+                    }
+                }
+                break;
+        }
     }
-
 }
 
 //***** DUMMY PLAYER *******//
@@ -364,15 +396,18 @@ const updateDummyPlayerStatus = (mode) =>
 // Start/Stop the dummy player and update the UI, if the source is NOT spotify
 // we only update the UI
 {
-    if (mode == 'pause')
+    togglePauseTrackUI(mode);
+    
+    switch(mode)
     {
-        if( GLOBALS.currentSource == SPOTIFY_SOURCE ){ document.querySelector("#dummy").pause(); }
-        document.querySelector("#pauseToggle").setAttribute("class", CONFIG.playClass);
-    }
-    else if ( mode == 'play' )
-    {
-        if( GLOBALS.currentSource == SPOTIFY_SOURCE ) { document.querySelector("#dummy").play(); }
-        document.querySelector("#pauseToggle").setAttribute("class", CONFIG.pauseClass);
+        case CONFIG.dummyPause:
+            if( GLOBALS.currentSource == SPOTIFY_SOURCE ){ document.querySelector("#dummy").pause(); }
+            document.querySelector("#pauseToggle").setAttribute("class", CONFIG.playClass);
+            break;
+        case CONFIG.dummyPlay:
+            if( GLOBALS.currentSource == SPOTIFY_SOURCE ) { document.querySelector("#dummy").play(); }
+            document.querySelector("#pauseToggle").setAttribute("class", CONFIG.pauseClass);
+            break;
     }
 }
 
@@ -511,7 +546,8 @@ const addTrackToTable = (source, player, entry, index) =>
 {
     row = document.createElement("tr");
     row.setAttribute("tabIndex", index);
-    row.className = "clickable trackItem";
+
+    row.className = CONFIG.rowClass; 
 
     // Hook up each entry to play the indicated track when clicked
     row.onclick = () => playTrackFromIndex( source, player, getCurrentPlaylist(source), index ); 
@@ -522,7 +558,6 @@ const addTrackToTable = (source, player, entry, index) =>
     // Set the class indicator for the spotify or local icon
     columns[0].setAttribute( "class", CONFIG.iconCSS[ source ] );
     
-    columns[0].innerText = "";
     columns[1].innerText = entry.title;
     columns[2].innerText = entry.album;
     columns[3].innerText = entry.artist;
@@ -560,6 +595,7 @@ const dummyAudioHandler = (mode) =>
     event.stopPropagation();
 }
 
+
 //********* MISC *********//
 
 const getPlaylistOfCurrentTrack = () =>
@@ -568,7 +604,10 @@ const getPlaylistOfCurrentTrack = () =>
     {
         return HISTORY[ GLOBALS.historyPos ].playlist;
     }
-    else { console.error(`Not enough tracks in history to fetch ${GLOBALS.historyPos}`); }
+    else 
+    { 
+        console.error(`Not enough tracks in history to fetch ${GLOBALS.historyPos}`); 
+    }
 }
 
 const getCurrentPlaylist = (source = GLOBALS.currentSource) =>
