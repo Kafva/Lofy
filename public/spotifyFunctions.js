@@ -122,7 +122,8 @@ const playSpotifyTrack = async (playlistName, player, trackNum=null, addToHistor
         // but we should also add explicitly played tracks to the HISTORY         
     }
 
-    console.log("Playing new track:", addToHistory, trackNum, tracks_json);
+    console.log(`Playing new track=${trackNum} (addToHistory=${addToHistory}):`, tracks_json);
+
     if (addToHistory){ addTrackToHistory(SPOTIFY_SOURCE, trackNum, tracks_json[trackNum].track.uri); }
 
     /* (historyPos >= 1) ==> Play next track in HISTORY */

@@ -166,13 +166,12 @@ const seekPlayback = (direction) =>
 
 const playTrackFromIndex = (source, player, playlistName, trackNum) =>
 {
-    if ( document.querySelector("#pauseToggle").className == CONFIG.playClass && HISTORY.length > 0)
-    // Check if the player is currently paused
+    // If the track that is about to be played is the same as the current track
+    // toggle playback instead of playing it from scratch, 
+    // (applicable for clicking a paused track in the playlists)
+    
+    if ( HISTORY.length > 0 )
     {
-        // If the track that is about to be played is the same as the current track
-        // and the player is paused, we resume playback instead of restarting it
-        // (applicable for clicking a paused track in the playlists)
-        
         _source = HISTORY[ GLOBALS.historyPos ].spotifyURI ? SPOTIFY_SOURCE : LOCAL_SOURCE;
 
         if (HISTORY[ GLOBALS.historyPos ].playlist == playlistName && 
@@ -180,22 +179,21 @@ const playTrackFromIndex = (source, player, playlistName, trackNum) =>
             _source == source )
         {
             pauseToggle(player);
+            return;
         }
     }
-    else
+    
+    switch (source)
     {
-        switch (source)
-        {
-            case SPOTIFY_SOURCE:
-                document.querySelector("#localPlayer").pause();
-                playSpotifyTrack( playlistName, player, trackNum );    
-                break;
-            case LOCAL_SOURCE:
-                // Pause Spotify and start playing from the local source
-                toggleSpotifyPlayback( getCurrentPlaylist(SPOTIFY_SOURCE) , player, pauseOnly=true );
-                playNextLocalTrack(playlistName, trackNum);
+        case SPOTIFY_SOURCE:
+            document.querySelector("#localPlayer").pause();
+            playSpotifyTrack( playlistName, player, trackNum );    
+            break;
+        case LOCAL_SOURCE:
+            // Pause Spotify and start playing from the local source
+            toggleSpotifyPlayback( getCurrentPlaylist(SPOTIFY_SOURCE) , player, pauseOnly=true );
+            playNextLocalTrack(playlistName, trackNum);
                 break; 
-        }
     }
 }
 
@@ -579,9 +577,9 @@ const getNewTrackNumber = (playlistLength,trackNum=null) =>
     .some( h => h.trackNum == trackNum ) || trackNum == null )
     // Ensure that no track (from the current playlist) present in the history is picked
     {
-        // We multiply by [length] and not [length-1]
+        // We multiply by [length-1]
         // Math.random() cannot return 1
-        trackNum  = Math.floor( Math.random() * playlistLength ) + 1;
+        trackNum  = Math.floor( Math.random() * (playlistLength-1) ) + 1;
     }
 
     return trackNum;
