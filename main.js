@@ -13,6 +13,7 @@ const runAsync = async () =>
 	//******* CONSTANTS ************/
 	const CONFIG = 
 	{
+		DEBUG: true,
 		WEB_SERVICE_PORT: PORT,
 		WEB_SERVICE_ADDR: '0.0.0.0',
 		STATE_STR_LENGTH: 16,
@@ -52,7 +53,7 @@ const runAsync = async () =>
 	// requiried to serve static files, i.e. access to reply.sendFile()
 	const fastify = require('fastify')(
 		{ 
-			logger: true,
+			logger: CONFIG.DEBUG,
 			https: {
 				key: CONFIG.tls_key,
 				cert: CONFIG.tls_cert
@@ -93,14 +94,6 @@ const runAsync = async () =>
 		secret: functions.stateString(CONFIG.STATE_STR_LENGTH), 
 		parseOptions: {} 
 	})
-
-	// SESSION support (depends on the cookie plugin)
-	// The `secure` option needs to be set to false for plain HTTP
-	//fastify.register(require('fastify-session'), 
-	//{
-	//	secret: functions.stateString(32),
-	//	options: {secure: false} 
-	//});	
 
 	//************************************/
 

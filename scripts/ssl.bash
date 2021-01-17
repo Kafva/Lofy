@@ -9,7 +9,7 @@ name=$1
 lifetime=730
 sslPath=$PWD/ssl
 outdir=$PWD/secret
-sslConf=$PWD/scripts/openssl.cnf
+sslConf=$PWD/conf/openssl.cnf
 
 mkdir -p $sslPath $outdir
 mkdir -p $sslPath/certs $sslPath/newcerts $sslPath/private $sslPath/crl

@@ -1,7 +1,7 @@
 
 const keyboardHandler = (event, player) => 
 {
-    //console.log(`-------- ${event.key} | (shift:${event.shiftKey}) ----------`)   
+    if(DEBUG) console.log(`-------- ${event.key} | (shift:${event.shiftKey}) ----------`)   
 
     if (!event.shiftKey)
     // Key bindings not requiring shift
@@ -59,7 +59,7 @@ const mediaHandlers = (player) =>
     {
         navigator.mediaSession.setActionHandler(CONFIG.dummyPlay, async () => 
         { 
-            console.log(`----PLAY---- (${navigator.mediaSession.playbackState})`); 
+            if(DEBUG) console.log(`----PLAY---- (${navigator.mediaSession.playbackState})`); 
             
             switch(GLOBALS.currentSource)
             {
@@ -87,7 +87,7 @@ const mediaHandlers = (player) =>
         });
         navigator.mediaSession.setActionHandler(CONFIG.dummyPause, async () => 
         { 
-            console.log(`----PAUSE---- (${navigator.mediaSession.playbackState})`); 
+            if(DEBUG) console.log(`----PAUSE---- (${navigator.mediaSession.playbackState})`); 
            
             switch(GLOBALS.currentSource)
             {
@@ -114,12 +114,12 @@ const mediaHandlers = (player) =>
         });
         navigator.mediaSession.setActionHandler('previoustrack', () => 
         { 
-            console.log("----PREV----");
+            if(DEBUG) console.log("----PREV----");
             playPrevTrack(player);
         });
         navigator.mediaSession.setActionHandler('nexttrack', () => 
         { 
-            console.log("----NEXT-----"); 
+            if(DEBUG) console.log("----NEXT-----"); 
             playNextTrack(player);
         });
     }
@@ -127,8 +127,15 @@ const mediaHandlers = (player) =>
 
 const clickHandler = (player) =>
 {
+
     switch (event.target.id)
     {
+        case 'playlistToggle':
+            modifyVisibility("#trackList");
+            break;
+        case 'coverToggle':
+            modifyVisibility("#cover", CONFIG.coverOpacity, checkSrc=true);
+            break;
         case 'pauseToggle':
             pauseToggle(player);    
             break;

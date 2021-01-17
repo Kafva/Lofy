@@ -31,12 +31,16 @@ body
     margin: 0; padding: 0; border: 0; outline: 0;
 }
 
+audio { display: none; }
+
 /********** Bar **********/
 #bar 
 {
    background-color: var(--bar);
    opacity: 1.0;
    position: fixed;
+   
+   /* The bar only contains text elements (besides the floated <select> elements) */
    text-align: center;
    
    width: 100%;
@@ -71,26 +75,85 @@ body
     float: right;
 }
 
+#playlistToggle, #coverToggle
+{
+    float: left;
+    font-size: medium;
+}
+
 .seperator
 {
     margin: 10px;
 }
 
+/********* Cover and container *******/
+
+#container
+/* The trackList and cover are setup inside a flexbox */
+{
+    position: absolute;
+    top: 8%;
+    left: 0%;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    
+    align-items: flex-start;
+    justify-content: center;
+    overflow: scroll;
+    width: 100%;
+    height: fit-content;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 0.6; }
+}
+
+#cover
+{ 
+    margin-left: 10px;
+    margin-right: 10px;
+    
+    width: 200px;
+    height: 200px;
+    scale: 0.9;
+    border-radius: 5%;
+
+    animation: fadeIn 0.5s;
+
+    /* Fade out */
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.5s linear;
+}
+
+img#cover:hover { opacity: 0.9; }
 
 /********** Track list **********/
+
+@keyframes fadeIn100 {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
 #trackList
 {
     border-collapse: collapse;
     text-align: right;
 
-    position: absolute;
-    width: 70%;
-    height: auto;
+    margin-left: 10px;
+    margin-right: 10px;
     
-    top: 100px;
-    left: 5%;
-    overflow: scroll;
     padding: 15px;
+    
+    animation: fadeIn100 0.5s;
+
+    /* Fade out */
+    visibility: visible;
+    opacity: 1;
+    transition: opacity 0.5s linear;
 }
 
 .trackItem
@@ -136,5 +199,3 @@ thead
 {
     cursor: pointer;
 }
-
-audio { display: none; }

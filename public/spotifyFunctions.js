@@ -11,7 +11,7 @@ const addPlayerListeners = (player) =>
     // Playback status updates
     player.addListener('player_state_changed', state => 
     { 
-        console.log('player_state_changed', state); 
+        if(DEBUG) console.log('player_state_changed', state); 
         handleSpotifyTrackEnd(player);
     });
 
@@ -32,10 +32,6 @@ const refreshToken = async (player) =>
     // servers /refresh endpoint to update the access_token
     await new Promise(r => setTimeout(r, ( getCookiesAsJSON().expires_in-10)*1000));
     
-    //console.log("Waiting...")
-    //await new Promise(r => setTimeout(r, 10*1000));
-    //console.log("Sending /refresh!");
-    
     let xhr = new XMLHttpRequest();
     xhr.open('GET', '/refresh?' + `refresh_token=${getCookiesAsJSON().refresh_token}`, true);
 
@@ -43,7 +39,7 @@ const refreshToken = async (player) =>
     {
         // The response from the server should be a redirect to /home
         // with new parameters
-        console.log("Recived response from /refresh: ", xhr.response, JSON.parse(xhr.response), );
+        if(DEBUG) console.log("Recived response from /refresh: ", xhr.response, JSON.parse(xhr.response), );
         try
         {
             res = JSON.parse(xhr.response) 
@@ -122,7 +118,7 @@ const playSpotifyTrack = async (playlistName, player, trackNum=null, addToHistor
         // but we should also add explicitly played tracks to the HISTORY         
     }
 
-    console.log(`Playing new track=${trackNum} (addToHistory=${addToHistory}):`, tracks_json);
+    if(DEBUG) console.log(`Playing new track=${trackNum} (addToHistory=${addToHistory}):`, tracks_json);
 
     if (addToHistory){ addTrackToHistory(SPOTIFY_SOURCE, trackNum, tracks_json[trackNum].track.uri); }
 
@@ -132,7 +128,7 @@ const playSpotifyTrack = async (playlistName, player, trackNum=null, addToHistor
     
     track     = tracks_json[trackNum].track; 
     
-    console.log(`Track JSON for ${track.name}:`, trackNum, track);
+    if(DEBUG) console.log(`Track JSON for ${track.name}:`, trackNum, track);
 
     // Start playback 
     await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${player._options.id}`, {
@@ -256,10 +252,10 @@ const setSpotifyVolume = async (diff, newPercent=null ) =>
 
             document.querySelector("#volume").innerText = `${newPercent} %`;
         }
-        else { console.log(`setSpotifyVolume(): invalid percent ${newPercent}`); }
+        else { console.error(`setSpotifyVolume(): invalid percent ${newPercent}`); }
         
     }
-    else { console.log(`setSpotifyVolume(): ${CONFIG.inactivePlayer}`); }
+    else { console.error(`setSpotifyVolume(): ${CONFIG.inactivePlayer}`); }
 }
 
 const seekSpotifyPlayback = async (ms) =>
@@ -267,7 +263,7 @@ const seekSpotifyPlayback = async (ms) =>
     // TODO will skip to the next/prev track if the seek operation overflows the scope of the track
     // could cause bugs
     let track_json = await getCurrentSpotifyTrack();
-    console.log(track_json);
+    if(DEBUG) console.log(track_json);
     fetch(`https://api.spotify.com/v1/me/player/seek?position_ms=${track_json.progress_ms + ms}`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
@@ -394,21 +390,21 @@ const handleSpotifyTrackEnd = async (player) =>
         if ( track.item.uri == CONFIG.spotifySilence )
         // Check if we are currently listening to 'silence'
         {
-            console.log(`Listening to: ${track.item.name}`);
+            if(DEBUG) console.log(`Listening to: ${track.item.name}`);
             
             if ( GLOBALS.mutexTaken == false)
             // Ensure that no other 'player_state_change' event is in the
             // process of starting a new track
             {
                 GLOBALS.mutexTaken = true;
-                console.log("Mutex taken!");
+                if(DEBUG) console.log("Mutex taken!");
 
                 playNextTrack(player);
 
                 // Short wait before releasing the mutex
                 await new Promise(r => setTimeout(r, CONFIG.newTrackDelay));
                 GLOBALS.mutexTaken = false;
-                console.log("Mutex released!");
+                if(DEBUG) console.log("Mutex released!");
             }
         }
     }

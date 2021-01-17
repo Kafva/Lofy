@@ -1,3 +1,4 @@
+var DEBUG = true;
 const SPOTIFY_SOURCE = 'spotify';
 const LOCAL_SOURCE   = 'local';
 
@@ -18,7 +19,11 @@ const CONFIG = {
     unknown: 'Unknown',
     dummyPlay: 'play',
     dummyPause: 'pause',
-   
+    
+    coverOpacity: 0.6,
+    coverHeight: 300,
+    coverWidth: 300,
+
     scrollPixels: 400,
 
     currentTrackCSS: "amp",

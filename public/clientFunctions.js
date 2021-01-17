@@ -24,6 +24,11 @@ const setupMediaMetadata = async () =>
                         sizes: `${item.width}x${item.height}`, 
                         type: 'image/png' 
                     });
+
+                    if ( item.width == CONFIG.coverWidth && item.height == CONFIG.coverHeight )
+                    {
+                        document.querySelector("#cover").src = item.url;
+                    }
                 } 
                 navigator.mediaSession.metadata = new MediaMetadata({
                     title: _json.item.name,
@@ -50,6 +55,8 @@ const setupMediaMetadata = async () =>
                         }
                     ] 
                 });
+
+                document.querySelector("#cover").src = `/cover/${ getPlaylistOfCurrentTrack() }/${track.id}`; 
             }
             else { console.error(`Failed to fetch metadata:`, track); }
             break;
@@ -159,7 +166,8 @@ const seekPlayback = (direction) =>
             break;
     }
 
-    console.log( `Seek [start(),end()] = [${p.seekable.start(p.seekable.length - 1)},${p.seekable.end(p.seekable.length - 1)}] (sec)` );
+    if(DEBUG) console.log( `Seek [start(),end()] = [${p.seekable.start(p.seekable.length - 1)},${p.seekable.end(p.seekable.length - 1)}] (sec)` );
+    
     p.currentTime = p.currentTime + ( direction * (CONFIG.seekStepMs/1000) );
 
 }
@@ -362,7 +370,7 @@ const togglePauseTrackUI = (mode) =>
                     { 
                         if ( row.querySelectorAll("td")[0].className.match( CONFIG.currentTrackCSS ) )
                         {
-                            console.log("Adding playIcon!", row);
+                            if(DEBUG) console.log("Adding playIcon!", row);
                             let _className  = row.querySelectorAll("td")[0].className
                             
                             _className      = _className.replace(CONFIG.currentTrackCSS, CONFIG.playClass);
@@ -377,7 +385,7 @@ const togglePauseTrackUI = (mode) =>
                 { 
                     if ( row.querySelectorAll("td")[0].className.match( CONFIG.playClass ) )
                     {
-                        console.log("Removing playIcon!", row);
+                        if (DEBUG) console.log("Removing playIcon!", row);
                         let _className  = row.querySelectorAll("td")[0].className
                         _className      = _className.replace(CONFIG.playClass , CONFIG.currentTrackCSS);
                         row.querySelectorAll("td")[0].className = _className;
@@ -385,6 +393,44 @@ const togglePauseTrackUI = (mode) =>
                 }
                 break;
         }
+    }
+}
+
+const modifyVisibility = async (selector, visibleOpacity=1, checkSrc=false) =>
+{
+    if ( getComputedStyle(document.querySelector(selector)).opacity == 0 )
+    // Make visible
+    {
+        // Move the item into the flexbox
+        let el =  document.querySelector(selector);
+        document.querySelector("#container").append(el);
+        
+        if(checkSrc)
+        {
+            if ( document.querySelector(selector).src != "" )
+            {
+                document.querySelector(selector).style.visibility = 'visible'; 
+                document.querySelector(selector).style.opacity = visibleOpacity; 
+            }  
+        }
+        else 
+        { 
+            document.querySelector(selector).style.visibility = 'visible'; 
+            document.querySelector(selector).style.opacity = visibleOpacity; 
+        }
+    }
+    else
+    // Make invisible
+    {
+        // We haft to wait before setting the visibility for the animation to complete
+        document.querySelector(selector).style.opacity = 0; 
+        await new Promise(r => setTimeout(r, 500));
+        document.querySelector(selector).style.visibility = 'hidden'; 
+
+
+        // Move the item out of the flexbox
+        let el =  document.querySelector(selector);
+        document.body.append(el);
     }
 }
 
@@ -475,7 +521,7 @@ const getTrackHistoryJSON = (index=0) =>
     }
     else
     { 
-        console.log(`HISTORY does not have enough entries to fetch [${index}]:`, HISTORY); 
+        console.error(`HISTORY does not have enough entries to fetch [${index}]:`, HISTORY); 
         return {playlist: null, trackNum: null, spotifyURI: null}; 
     }
 
@@ -589,7 +635,7 @@ const dummyAudioHandler = (mode) =>
 // Activated when the pause/play media keys are pressed
 {
     navigator.mediaSession.playbackState = mode;  
-    console.log(mode,event);
+    if(DEBUG) console.log(mode,event);
     event.stopPropagation();
 }
 
