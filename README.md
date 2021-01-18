@@ -30,4 +30,4 @@ A configuration to manage the service via `launchctl` is included. Note that to 
 On first visit the site will redirect for OAuth authentication with Spotify. Note that a bookmark of the service should not contain the `/home?redirect=true` query string.
 
 ## Local playlists
-Local playlists are read from the `playlist` directory in the project folder and should contain the complete path to each audio file in the playlist (newline separated).
+Local playlists are read from the `playlists` directory in the project folder and should contain the complete path to each audio file in the playlist (newline separated).
