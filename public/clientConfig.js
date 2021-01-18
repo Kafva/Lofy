@@ -1,11 +1,11 @@
-var DEBUG = true;
+const DEBUG = true;
 const SPOTIFY_SOURCE = 'spotify';
 const LOCAL_SOURCE   = 'local';
 
-const CONFIG = {
+const CONFIG = Object.freeze({
     //** Default config **/
-    defaultLocalPlaylist: '-',
-    defaultSpotifyPlaylist: 'Df',
+    defaultLocalPlaylist: 'Justin Bieber',
+    defaultSpotifyPlaylist: '✨',
     
     historyLimit: 50,
     volumeStep: 5,
@@ -16,6 +16,8 @@ const CONFIG = {
     pauseClass: 'clickable nf nf-fa-pause',
     playClass: 'clickable nf nf-fa-play',
     rowClass: 'clickable trackItem',
+    noShuffleClass: 'nf nf-mdi-shuffle_disabled',
+    shuffleClass: 'nf nf-mdi-shuffle_variant',
     noContextOption: '-',
     newTrackDelay: 1500,
     defaultAutoRepeatState: 'off',
@@ -57,34 +59,5 @@ const CONFIG = {
     volumeUp: 'ArrowUp',
     seekBack: 'H',
     seekForward: 'L',
-}
-
-var GLOBALS = {
-    shuffle: true,
-    currentSource: null,
-
-    // To show the progress indicator for spotify the 'timeupdate' events from
-    // the silent dummy track that plays alongside spotify is used
-    currentDuration: 
-    {
-        min: -1,
-        sec: -1
-    },
-    dummyProgressOffsetSec: -1, 
-
-    mutexTaken: false,
-
-    // Contains the number of tracks for the current playlist from each source
-    currentPlaylistCount: {
-        [SPOTIFY_SOURCE]: null,
-        [LOCAL_SOURCE]: null
-    },
-
-    // The current history position
-    // incremented/decremented when playing next/previous track
-    historyPos: 0,
-}
-
-// The trackNum corresponds to the index in a local or spotify playlist
-// { playlist: <...>, trackNum: <...> , spotifyURI: <...> }
-var HISTORY = [];
+    debugInfo: 'D',
+});

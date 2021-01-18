@@ -1,5 +1,5 @@
 
-const keyboardHandler = (event, player) => 
+const keyboardHandler = (STATE, HISTORY, player, event) => 
 {
     if(DEBUG) console.log(`-------- ${event.key} | (shift:${event.shiftKey}) ----------`)   
 
@@ -20,7 +20,7 @@ const keyboardHandler = (event, player) =>
             case CONFIG.pausePlay:
                 // Prevent <SPACE> from scrolling
                 event.preventDefault();
-                pauseToggle(player);
+                pauseToggle(STATE, HISTORY, player);
                 break;
         }
     }
@@ -28,23 +28,26 @@ const keyboardHandler = (event, player) =>
     {
         switch(event.key)
         {
+            case CONFIG.debugInfo:
+                getDebug(STATE,HISTORY);
+                break;
             case CONFIG.volumeUp:
-                setVolume(CONFIG.volumeStep);
+                setVolume(STATE.currentSource, CONFIG.volumeStep);
                 break;
             case CONFIG.volumeDown:
-                setVolume(-CONFIG.volumeStep);
+                setVolume(STATE.currentSource,-CONFIG.volumeStep);
                 break;
             case CONFIG.next:
-                playNextTrack(player);
+                playNextTrack(STATE, HISTORY, player);
                 break;
             case CONFIG.previous:
-                playPrevTrack(player);
+                playPrevTrack(STATE, HISTORY, player);
                 break;
             case CONFIG.seekForward:
-                seekPlayback(1);
+                seekPlayback(STATE.currentSource, 1);
                 break;
             case CONFIG.seekBack:
-                seekPlayback(-1);
+                seekPlayback(STATE.currentSource, -1);
                 break;
             case CONFIG.scrollBottom:
                 window.scrollTo(0,document.querySelector("#trackList").scrollHeight);
@@ -62,7 +65,7 @@ const keyboardHandler = (event, player) =>
 // the spotify iframe will still catch <PAUSE> events but our own dummy object will be notified
 // as well when this occurs. 
 
-const mediaHandlers = (player) =>
+const mediaHandlers = (STATE, HISTORY, player) =>
 {
     if ('mediaSession' in navigator) 
     {
@@ -70,7 +73,7 @@ const mediaHandlers = (player) =>
         { 
             if(DEBUG) console.log(`----PLAY---- (${navigator.mediaSession.playbackState})`); 
             
-            switch(GLOBALS.currentSource)
+            switch(STATE.currentSource)
             {
                 case SPOTIFY_SOURCE:
                     // Wait a bit for the spotify player state to update (via the reaction from the iframe) 
@@ -87,10 +90,10 @@ const mediaHandlers = (player) =>
                             headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
                         });
                     }
-                    updateDummyPlayerStatus(CONFIG.dummyPlay);
+                    updateDummyPlayerStatus(STATE.currentSource, CONFIG.dummyPlay);
                     break;
                 case LOCAL_SOURCE:
-                    toggleLocalPlayback();
+                    toggleLocalPlayback(LOCAL_SOURCE);
                     break;
             }
         });
@@ -98,7 +101,7 @@ const mediaHandlers = (player) =>
         { 
             if(DEBUG) console.log(`----PAUSE---- (${navigator.mediaSession.playbackState})`); 
            
-            switch(GLOBALS.currentSource)
+            switch(STATE.currentSource)
             {
                 case SPOTIFY_SOURCE:
                     // Wait a bit for the spotify player state to update before checking it
@@ -114,7 +117,7 @@ const mediaHandlers = (player) =>
                             headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
                         });
                     }
-                    updateDummyPlayerStatus(CONFIG.dummyPause);
+                    updateDummyPlayerStatus(STATE.currentSource, CONFIG.dummyPause);
                     break;
                 case LOCAL_SOURCE:
                     toggleLocalPlayback();
@@ -124,19 +127,18 @@ const mediaHandlers = (player) =>
         navigator.mediaSession.setActionHandler('previoustrack', () => 
         { 
             if(DEBUG) console.log("----PREV----");
-            playPrevTrack(player);
+            playPrevTrack(STATE, HISTORY, player);
         });
         navigator.mediaSession.setActionHandler('nexttrack', () => 
         { 
             if(DEBUG) console.log("----NEXT-----"); 
-            playNextTrack(player);
+            playNextTrack(STATE, HISTORY, player);
         });
     }
 }
 
-const clickHandler = (player) =>
+const clickHandler = (STATE, HISTORY, player) =>
 {
-
     switch (event.target.id)
     {
         case 'playlistToggle':
@@ -146,28 +148,28 @@ const clickHandler = (player) =>
             modifyVisibility("#cover", CONFIG.coverOpacity, checkSrc=true);
             break;
         case 'shuffleToggle':
-            toggleShuffle();
+            toggleShuffle(STATE);
             break;
         case 'pauseToggle':
-            pauseToggle(player);    
+            pauseToggle(STATE, HISTORY, player);    
             break;
         case 'volumeUp':
-            setVolume(CONFIG.volumeStep);
+            setVolume(STATE.currentSource, CONFIG.volumeStep);
             break;
         case 'volumeDown':
-            setVolume(-CONFIG.volumeStep);
+            setVolume(STATE.currentSource, -CONFIG.volumeStep);
             break;
         case 'previous':
-            playPrevTrack(player);
+            playPrevTrack(STATE, HISTORY, player);
             break;
         case 'next':
-            playNextTrack(player);
+            playNextTrack(STATE, HISTORY, player);
             break;
         case 'seekForward':
-            seekPlayback(1);
+            seekPlayback(STATE.currentSource, 1);
             break;
         case 'seekBack':
-            seekPlayback(-1);
+            seekPlayback(STATE.currentSource, -1);
             break;
     }
 }

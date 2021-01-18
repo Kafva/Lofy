@@ -67,19 +67,6 @@ audio { display: none; }
     overflow: hidden;
 }
 
-#shuffleToggle 
-{ 
-    border: thin solid var(--text);
-    border-radius: 50%;
-}
-
-#playlistToggle, #coverToggle 
-/* Set a transparent border for alignment */
-{ 
-    border: thin solid rgba(0,0,0,0);
-    border-radius: 50%;
-}
-
 #bar > select
 {
     opacity: 1.0;

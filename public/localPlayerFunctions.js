@@ -62,7 +62,7 @@ const setLocalPlaylistOptions = async () =>
     }
 }
 
-const playNextLocalTrack = (playlistName,trackNum=null, addToHistory=true) => 
+const playNextLocalTrack = (STATE, HISTORY, playlistName, trackNum=null, addToHistory=true) => 
 {
     // When picking the track to play we ensure that no track from the history is picked
     // if all tracks have been played, clear the history
@@ -70,22 +70,22 @@ const playNextLocalTrack = (playlistName,trackNum=null, addToHistory=true) =>
     if (trackNum == null)
     /* (historyPos:0) ==> Play a new track (and add it to the HISTORY) */
     {
-        trackNum = getNewTrackNumber( GLOBALS.currentPlaylistCount.local );
+        trackNum = getNewTrackNumber(HISTORY, STATE.currentSource, STATE.currentPlaylistCount.local );
     }
 
-    if(addToHistory){ addTrackToHistory(LOCAL_SOURCE, trackNum); }
+    if(addToHistory){ addTrackToHistory(HISTORY, LOCAL_SOURCE, trackNum); }
 
     // Play the given track
-    playLocalTrack(playlistName, trackNum);
+    playLocalTrack(STATE, HISTORY, playlistName, trackNum);
 }
 
-const getCurrentLocalTrack = async () =>
+const getCurrentLocalTrack = async (HISTORY, historyPos) =>
 {
-    let _playlist = getPlaylistOfCurrentTrack();
+    let _playlist = getPlaylistOfCurrentTrack(HISTORY, historyPos);
     let playlist = await getLocalPlaylistJSON( _playlist );
     if (playlist != undefined && playlist != [])
     {
-        trackNum = getTrackHistoryJSON( GLOBALS.historyPos ).trackNum;
+        trackNum = getTrackHistoryJSON(HISTORY, historyPos ).trackNum;
         try
         {
             return playlist.tracks[trackNum];
@@ -99,8 +99,8 @@ const getCurrentLocalTrack = async () =>
 const toggleLocalPlayback = () =>
 {
     let p = document.querySelector("#localPlayer");
-    if (p.paused) { p.play();  updateDummyPlayerStatus(CONFIG.dummyPlay);  }
-    else          { p.pause(); updateDummyPlayerStatus(CONFIG.dummyPause); }
+    if (p.paused) { p.play();  updateDummyPlayerStatus(LOCAL_SOURCE, CONFIG.dummyPlay);  }
+    else          { p.pause(); updateDummyPlayerStatus(LOCAL_SOURCE, CONFIG.dummyPause); }
 }
 
 const setLocalVolume = (diff, newPercent=null) =>
@@ -120,9 +120,9 @@ const setLocalVolume = (diff, newPercent=null) =>
 
 //********** HELPER **********/
 
-const playLocalTrack = async (playlistName, trackNum) =>
+const playLocalTrack = async (STATE, HISTORY, playlistName, trackNum) =>
 {
-    GLOBALS.currentSource = LOCAL_SOURCE; 
+    STATE.currentSource = LOCAL_SOURCE; 
     
     document.querySelector("#localPlayer").src = `/audio/${escape(playlistName)}/${trackNum}`
     let p = document.querySelector("#localPlayer");
@@ -135,22 +135,22 @@ const playLocalTrack = async (playlistName, trackNum) =>
     let sec = Math.floor(document.querySelector("#localPlayer").duration % 60);
     if (sec <= 9 && sec >= 0){ sec = `0${sec}`; }
 
-    GLOBALS.currentDuration = 
+    STATE.currentDuration = 
     {
         sec: sec,
         min: Math.floor(document.querySelector("#localPlayer").duration / 60)
     }
 
-    updateDummyPlayerStatus(CONFIG.dummyPlay);
-    updateCurrentTrackUI();
+    updateDummyPlayerStatus(STATE.currentSource, CONFIG.dummyPlay);
+    updateCurrentTrackUI(HISTORY, STATE.historyPos, STATE.currentSource);
 
     // Update volume indicator
     setLocalVolume(0);
 
-    setupMediaMetadata();
+    setupMediaMetadata(STATE, HISTORY);
 }
 
-const updateLocalPlaylistCount = async () =>
+const updateLocalPlaylistCount = async (STATE) =>
 {
     playlists = await getLocalPlaylistJSON(); 
     
@@ -159,7 +159,7 @@ const updateLocalPlaylistCount = async () =>
         if ( playlist.name == getCurrentPlaylist(LOCAL_SOURCE) )
         // Find the playlist corresponding to the current selection
         {
-            GLOBALS.currentPlaylistCount.local = playlist.tracks.length; 
+            STATE.currentPlaylistCount.local = playlist.tracks.length; 
             return;
         }
     }

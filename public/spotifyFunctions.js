@@ -1,4 +1,4 @@
-const addPlayerListeners = (player) =>
+const addPlayerListeners = (STATE, HISTORY, player) =>
 {
     // See https://developer.spotify.com/documentation/web-playback-sdk/quick-start/
     // Error handling
@@ -12,14 +12,14 @@ const addPlayerListeners = (player) =>
     player.addListener('player_state_changed', state => 
     { 
         if(DEBUG) console.log('player_state_changed', state); 
-        handleSpotifyTrackEnd(player);
+        handleSpotifyTrackEnd(STATE, HISTORY, player);
     });
 
     // Ready
     player.addListener('ready', ({ device_id }) => 
     { 
         console.log('Ready with Device ID', device_id);
-        InitSpotifyPlayer(player);
+        InitSpotifyPlayer(STATE, HISTORY, player);
     });
 
     // Not Ready
@@ -65,7 +65,7 @@ const refreshToken = async (player) =>
 
 //********** Spotify API Actions ******************/
 
-const InitSpotifyPlayer = async (player) =>
+const InitSpotifyPlayer = async (STATE, HISTORY, player) =>
 {
     // Activate the web player (without starting any music)
     await fetch(`https://api.spotify.com/v1/me/player`, {
@@ -94,26 +94,26 @@ const InitSpotifyPlayer = async (player) =>
     await setupSpotifyPlaylistsUI();
 
     // Update the playlist track counter
-    updatePlaylistCount(SPOTIFY_SOURCE);
+    updatePlaylistCount(STATE, SPOTIFY_SOURCE);
 
     // Add the tracks from the playlist to the UI
-    addPlaylistTracksToUI(SPOTIFY_SOURCE, player);
+    addPlaylistTracksToUI(STATE, HISTORY, SPOTIFY_SOURCE, player);
 }
 
-const playSpotifyTrack = async (playlistName, player, trackNum=null, addToHistory=true) => 
+const playSpotifyTrack = async (STATE, HISTORY, playlistName, player, trackNum=null, addToHistory=true) => 
 // Start playback with a random track from the provided playlist followed by silence
 // If a prevIndex from HISTORY is provided the corresponding track from the playlist will be chosen
 {
-    GLOBALS.currentSource = SPOTIFY_SOURCE;
+    STATE.currentSource = SPOTIFY_SOURCE;
 
     var track = null;
-    tracks_json   = await getTracksJSON(playlistName);
+    tracks_json   = await getTracksJSON(STATE, playlistName);
     
     if ( trackNum == null )
     /* (historyPos:0) ==> Play a new track */
     {
         // NOTE that we decrement the trackNum to get the array index in tracks_json
-        trackNum = getNewTrackNumber( GLOBALS.currentPlaylistCount.spotify );
+        trackNum = getNewTrackNumber(HISTORY, STATE.currentSource, STATE.currentPlaylistCount.spotify );
    
         // If we are playing a new track we should add it to the HISTORY
         // but we should also add explicitly played tracks to the HISTORY         
@@ -122,7 +122,7 @@ const playSpotifyTrack = async (playlistName, player, trackNum=null, addToHistor
     if(DEBUG) console.log(`Playing new track=${trackNum} tracks_json[${trackNum}] (addToHistory=${addToHistory}):`, tracks_json);
 
     // NOTE that we add the trackNum++ to the HISTORY since it is 
-    if (addToHistory){ addTrackToHistory(SPOTIFY_SOURCE, trackNum, tracks_json[trackNum].track.uri); }
+    if (addToHistory){ addTrackToHistory(HISTORY, SPOTIFY_SOURCE, trackNum, tracks_json[trackNum].track.uri); }
 
     /* (historyPos >= 1) ==> Play next track in HISTORY */
     // The next track is guaranteed to be a Spotify track from the base selection in `playPrevTrack()`
@@ -145,17 +145,17 @@ const playSpotifyTrack = async (playlistName, player, trackNum=null, addToHistor
 
     // Fetch the current track (after a short delay)
     await new Promise(r => setTimeout(r, CONFIG.newTrackDelay));
-    updateCurrentTrackUI();
+    updateCurrentTrackUI(HISTORY, STATE.historyPos, STATE.currentSource);
 
     // Start the dummy player and set a value for the dummyProgressOffset
-    updateDummyPlayerStatus(CONFIG.dummyPlay);
-    setDummyProgressOffset();
+    updateDummyPlayerStatus(STATE.currentSource, CONFIG.dummyPlay);
+    setDummyProgressOffset(STATE);
 
     // Set a value for the duration on the progress bar
     let sec = Math.floor(( track.duration_ms /1000)%60);
     if (sec <= 9 && sec >= 0){ sec = `0${sec}`; }
     
-    GLOBALS.currentDuration = 
+    STATE.currentDuration = 
     {
         sec: sec,
         min: Math.floor((track.duration_ms/1000)/60) 
@@ -165,7 +165,7 @@ const playSpotifyTrack = async (playlistName, player, trackNum=null, addToHistor
     document.querySelector("#volume").innerText = `${ Math.floor( (await getPlayerJSON()).device.volume_percent ) } %`;
 
     // Setup media Session metadata
-    setupMediaMetadata();
+    setupMediaMetadata(STATE, HISTORY);
 }
 
 const getCurrentSpotifyTrack = async () =>
@@ -181,7 +181,7 @@ const getCurrentSpotifyTrack = async () =>
     catch (e) { console.error(e,body); return null; }
 }
 
-const toggleSpotifyPlayback = async (playlistName, player, pauseOnly=false) => 
+const toggleSpotifyPlayback = async (STATE, HISTORY, playlistName, player, pauseOnly=false) => 
 {
     //*** NOTE that one cannot directly ['index'] the return value from an async function */
     let _json = await getDeviceJSON()
@@ -192,7 +192,7 @@ const toggleSpotifyPlayback = async (playlistName, player, pauseOnly=false) =>
         {
             if (!pauseOnly)
             {
-                await playSpotifyTrack(playlistName, player);
+                await playSpotifyTrack(STATE, HISTORY, playlistName, player);
             }
         }
         else
@@ -207,7 +207,7 @@ const toggleSpotifyPlayback = async (playlistName, player, pauseOnly=false) =>
                         method: 'PUT',
                         headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
                     });
-                    updateDummyPlayerStatus(CONFIG.dummyPause);
+                    updateDummyPlayerStatus(STATE.currentSource, CONFIG.dummyPause);
                 }
                 else
                 {
@@ -217,7 +217,7 @@ const toggleSpotifyPlayback = async (playlistName, player, pauseOnly=false) =>
                             method: 'PUT',
                             headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
                         });
-                        updateDummyPlayerStatus(CONFIG.dummyPlay);
+                        updateDummyPlayerStatus(STATE.currentSource, CONFIG.dummyPlay);
                     }
                 }
             }
@@ -349,16 +349,16 @@ const getPlayerJSON = async () =>
     return body;
 }
 
-const getTracksJSON = async (playlistName) =>
+const getTracksJSON = async (STATE, playlistName) =>
 {
     if ( playlistName == CONFIG.noContextOption ){ return null; }
     playlist_json = await getPlaylistJSON(playlistName);
     
     // The API only allows for 100 tracks to be returned per request, we must therefore issue several fetches
     // to aquire all the tracks of a playlist
-    if ( GLOBALS.currentPlaylistCount.spotify == null && getCurrentPlaylist(SPOTIFY_SOURCE) == playlistName )
+    if ( STATE.currentPlaylistCount.spotify == null && getCurrentPlaylist(SPOTIFY_SOURCE) == playlistName )
     { 
-        updatePlaylistCount(SPOTIFY_SOURCE); 
+        updatePlaylistCount(STATE, SPOTIFY_SOURCE); 
     }
     let tracks = [];
     
@@ -383,9 +383,9 @@ const getTracksJSON = async (playlistName) =>
 
 //************** HELPER ***************/
 
-const handleSpotifyTrackEnd = async (player) =>
+const handleSpotifyTrackEnd = async (STATE, HISTORY, player) =>
 {
-    if ( GLOBALS.currentSource == SPOTIFY_SOURCE )
+    if ( STATE.currentSource == SPOTIFY_SOURCE )
     {
         track = await getCurrentSpotifyTrack();
     
@@ -394,18 +394,18 @@ const handleSpotifyTrackEnd = async (player) =>
         {
             if(DEBUG) console.log(`Listening to: ${track.item.name}`);
             
-            if ( GLOBALS.mutexTaken == false)
+            if ( STATE.mutexTaken == false)
             // Ensure that no other 'player_state_change' event is in the
             // process of starting a new track
             {
-                GLOBALS.mutexTaken = true;
+                STATE.mutexTaken = true;
                 if(DEBUG) console.log("Mutex taken!");
 
-                playNextTrack(player);
+                playNextTrack(STATE, HISTORY, player);
 
                 // Short wait before releasing the mutex
                 await new Promise(r => setTimeout(r, CONFIG.newTrackDelay));
-                GLOBALS.mutexTaken = false;
+                STATE.mutexTaken = false;
                 if(DEBUG) console.log("Mutex released!");
             }
         }
