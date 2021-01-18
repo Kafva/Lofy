@@ -6,24 +6,24 @@ Create a Spotify developer account and register a new application. Configure a c
 Run `./scripts/ssl.bash <domain name>` to generate a self-signed server certificate and key under `./secret/` to use for HTTPS. To install the certificate of the CA on macOS one can use the command 
 
 ```bash
-	sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ssl/certs/ca.crt.
+sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ssl/certs/ca.crt.
 ```
 
 Install node dependencies
 
 ```bash
-	npm install
+npm install
 ```
 
 A configuration to manage the service via `launchctl` is included. Note that to use the provided `com..lofy.plist` configuration the `WorkingDirectory` needs to be modified in accordance with the setup.
 
 ```bash
-	# Load the service (not persistent after a reboot) 
-		launchctl load conf/com..lofy.plist
+# Load the service (not persistent after a reboot) 
+	launchctl load conf/com..lofy.plist
 
-	# Start/Stop the service
-		launchctl start com..lofy
-		launchctl stop  com..lofy
+# Start/Stop the service
+	launchctl start com..lofy
+	launchctl stop  com..lofy
 
 ```
 
