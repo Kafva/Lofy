@@ -81,17 +81,18 @@ const playNextLocalTrack = (playlistName,trackNum=null, addToHistory=true) =>
 
 const getCurrentLocalTrack = async () =>
 {
-    let playlist = await getLocalPlaylistJSON( getPlaylistOfCurrentTrack() );
+    let _playlist = getPlaylistOfCurrentTrack();
+    let playlist = await getLocalPlaylistJSON( _playlist );
     if (playlist != undefined && playlist != [])
     {
         trackNum = getTrackHistoryJSON( GLOBALS.historyPos ).trackNum;
         try
         {
-            return playlist.tracks[trackNum - 1];
+            return playlist.tracks[trackNum];
         }
         catch (e) { console.error(e); return null; }
     }
-    else { console.error("getCurrentLocalTrack(): getLocalPlaylistJSON ==>", playlist); }
+    else { console.error("getCurrentLocalTrack(): getLocalPlaylistJSON ==>", _playlist, playlist); }
 
 }
 
@@ -123,7 +124,7 @@ const playLocalTrack = async (playlistName, trackNum) =>
 {
     GLOBALS.currentSource = LOCAL_SOURCE; 
     
-    document.querySelector("#localPlayer").src = `/audio/${playlistName}/${trackNum}`
+    document.querySelector("#localPlayer").src = `/audio/${escape(playlistName)}/${trackNum}`
     let p = document.querySelector("#localPlayer");
     await p.load();
     await p.play();

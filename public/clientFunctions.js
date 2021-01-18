@@ -1,12 +1,3 @@
-//**** MEDIA KEYS *****/
-// The spotify <iframe> contains the actual web player and its own mediaSession object which we can't access due to SOP
-// https://github.com/spotify/web-playback-sdk/issues/105
-// https://stackoverflow.com/questions/25098021/securityerror-blocked-a-frame-with-origin-from-accessing-a-cross-origin-frame
-
-// As a work-around we use a dummy <audio> object which we register `ActionHandlers` for,
-// the spotify iframe will still catch <PAUSE> events but our own dummy object will be notified
-// as well when this occurs. 
-
 const setupMediaMetadata = async () =>
 // Setup metadata for mediaSession
 {
@@ -49,14 +40,14 @@ const setupMediaMetadata = async () =>
                     album: track.album,
                     artwork: [
                         {
-                            src: `/cover/${ getPlaylistOfCurrentTrack() }/${track.id}`,
+                            src: `/cover/${ escape(getPlaylistOfCurrentTrack()) }/${track.id}`,
                             sizes: `${track.cover.width || 0}x${track.cover.height || 0}`,
                             type: `image/${track.cover.type || 'png'}`
                         }
                     ] 
                 });
 
-                document.querySelector("#cover").src = `/cover/${ getPlaylistOfCurrentTrack() }/${track.id}`; 
+                document.querySelector("#cover").src = `/cover/${ escape(getPlaylistOfCurrentTrack()) }/${track.id}`; 
             }
             else { console.error(`Failed to fetch metadata:`, track); }
             break;
@@ -78,27 +69,45 @@ const setVolume = (diff,newPercent=null) =>
     }
 }
 
-const playNextTrack = async (player) =>
+const playNextTrack = async (player, newPlaylist=false) =>
 {
     // Otherwise play the next track from the history
     // and decrement the historyPos closer to the most recent track
-    var nextTrackNum = null;
-    var playlistName = null;
+    let addToHistory = true;
+
+    let entry = {
+        playlistName: null,
+        source: null, 
+        trackNum: null 
+    };
 
     if ( GLOBALS.historyPos == 0 )
-    // If we are at (historyPos:0) play a new random track
+    // If we are at (historyPos:0) play a new track
     {
-        source = audioSourceCoinflip();
-        playlistName = getCurrentPlaylist(source);
+        if(GLOBALS.shuffle){ entry.source = audioSourceCoinflip(); }
+        else 
+        // If shuffle is not active
+        {
+            setSourceAndTrackNumForNonShuffle(entry, newPlaylist);
+        }
+        
+        entry.playlistName = getCurrentPlaylist(entry.source);
     }
     else
     {
-        playlistName = HISTORY[ GLOBALS.historyPos - 1 ].playlist;
-        source = HISTORY[ GLOBALS.historyPos - 1 ].spotifyURI ? SPOTIFY_SOURCE : LOCAL_SOURCE;
-        nextTrackNum = (getTrackHistoryJSON( --GLOBALS.historyPos )).trackNum ;
+        entry.playlistName = HISTORY[ GLOBALS.historyPos - 1 ].playlist;
+        entry.source = HISTORY[ GLOBALS.historyPos - 1 ].spotifyURI ? SPOTIFY_SOURCE : LOCAL_SOURCE;
+        entry.trackNum = (getTrackHistoryJSON( GLOBALS.historyPos - 1 )).trackNum;
+
+        // Don't add a track to the HISTORY when catching up in the HISTORY
+        addToHistory = false;
     }
     
-    playTrackFromIndex(source, player, playlistName, nextTrackNum);
+    console.log("Next:", entry);
+    playTrackFromIndex(entry.source, player, entry.playlistName, entry.trackNum, addToHistory);
+    
+    // Decrement the history position after playing the next track
+    if( GLOBALS.historyPos != 0 ) GLOBALS.historyPos--;
 }
 
 const playPrevTrack = async (player) =>
@@ -172,12 +181,12 @@ const seekPlayback = (direction) =>
 
 }
 
-const playTrackFromIndex = (source, player, playlistName, trackNum) =>
+const playTrackFromIndex = (source, player, playlistName, trackNum, addToHistory=true) =>
 {
     // If the track that is about to be played is the same as the current track
     // toggle playback instead of playing it from scratch, 
     // (applicable for clicking a paused track in the playlists)
-    
+
     if ( HISTORY.length > 0 )
     {
         _source = HISTORY[ GLOBALS.historyPos ].spotifyURI ? SPOTIFY_SOURCE : LOCAL_SOURCE;
@@ -195,12 +204,12 @@ const playTrackFromIndex = (source, player, playlistName, trackNum) =>
     {
         case SPOTIFY_SOURCE:
             document.querySelector("#localPlayer").pause();
-            playSpotifyTrack( playlistName, player, trackNum );    
+            playSpotifyTrack( playlistName, player, trackNum, addToHistory );    
             break;
         case LOCAL_SOURCE:
             // Pause Spotify and start playing from the local source
             toggleSpotifyPlayback( getCurrentPlaylist(SPOTIFY_SOURCE) , player, pauseOnly=true );
-            playNextLocalTrack(playlistName, trackNum);
+            playNextLocalTrack(playlistName, trackNum, addToHistory);
                 break; 
     }
 }
@@ -322,11 +331,10 @@ const addPlaylistTracksToUI = async (source, player) =>
         }
     }
 
-    var index = null;
+    var index = 0;
     switch(source)
     {
         case SPOTIFY_SOURCE:
-            index = 0;
             for (let _json of ((await getTracksJSON( getCurrentPlaylist(SPOTIFY_SOURCE) )) || []) )
             {
                 sec = _json.track.duration_ms != null ? Math.floor(_json.track.duration_ms/1000) : 0;
@@ -340,7 +348,6 @@ const addPlaylistTracksToUI = async (source, player) =>
             }
             break;
         case LOCAL_SOURCE:
-            index = 1;    
             for (let _json of ((await getLocalPlaylistJSON( getCurrentPlaylist(LOCAL_SOURCE) )) || {tracks: []}).tracks )
             {
                 sec = _json.duration != null ? Math.floor(_json.duration) : 0;
@@ -593,7 +600,7 @@ const addTrackToTable = (source, player, entry, index) =>
 
     row.className = CONFIG.rowClass; 
 
-    // Hook up each entry to play the indicated track when clicked
+    // Hook up each entry to play the indicated track when clicked (starting from index=1)
     row.onclick = () => playTrackFromIndex( source, player, getCurrentPlaylist(source), index ); 
     
     // Create a 3-item array of <td> elements
@@ -612,6 +619,7 @@ const addTrackToTable = (source, player, entry, index) =>
 }
 
 const getNewTrackNumber = (playlistLength,trackNum=null) =>
+// The track numbers start from **0**
 {
     // If all tracks in the playlist exist in the history, clear the history
     if ( HISTORY.filter( h => h.playlist == getCurrentPlaylist() ).length == playlistLength )
@@ -623,11 +631,14 @@ const getNewTrackNumber = (playlistLength,trackNum=null) =>
     .some( h => h.trackNum == trackNum ) || trackNum == null )
     // Ensure that no track (from the current playlist) present in the history is picked
     {
-        // We multiply by [length-1]
-        // Math.random() cannot return 1
-        trackNum  = Math.floor( Math.random() * (playlistLength-1) ) + 1;
+        // We multiply by [length]
+        // Example: length = 16
+        //  ( random([0,1]) * 16 )
+        //  ==> [0,15]
+        trackNum  = Math.floor( Math.random() * (playlistLength) );
     }
 
+    if(DEBUG) console.log(`Random trackNum = ${trackNum} = floor(rand(0,1) * ${playlistLength}`);
     return trackNum;
 }
 
@@ -639,8 +650,64 @@ const dummyAudioHandler = (mode) =>
     event.stopPropagation();
 }
 
+const toggleShuffle = () =>
+{
+    GLOBALS.shuffle = !GLOBALS.shuffle;
+    if(GLOBALS.shuffle) document.querySelector("#shuffleToggle").style['border-color'] = CONFIG.textColor; 
+    else document.querySelector("#shuffleToggle").style['border-color'] = 'rgba(0,0,0,0)';
+}
 
 //********* MISC *********//
+
+const setSourceAndTrackNumForNonShuffle = ( ref , newPlaylist) =>
+{
+    if (newPlaylist != false)
+    // If the track to play is from a new playlist, play the first track
+    {
+        ref.source   = newPlaylist;
+        ref.trackNum = 0;
+    }
+    else
+    {
+        if ( HISTORY.length > 0 )
+        // If shuffle is not active we can identify the next track to play from the trackNum of
+        // the current track in the HISTORY, if the trackNum is the last in the playlist we attempt
+        // to play the first track from the other source (if one exists) and otherwise start over from 0
+        {
+            if ( HISTORY[ GLOBALS.historyPos ].trackNum == GLOBALS.currentPlaylistCount[GLOBALS.currentSource] - 1 )
+            // If the current track is the last in the playlist
+            {
+                let _otherSource = GLOBALS.currentSource == SPOTIFY_SOURCE ? LOCAL_SOURCE : SPOTIFY_SOURCE;
+
+                if ( getCurrentPlaylist(_otherSource) != CONFIG.noContextOption )
+                // If there is a playlist setup for the other source, play the first track from the other source
+                {
+                    ref.source       = _otherSource;
+                }
+                else 
+                { 
+                    ref.source       = GLOBALS.currentSource; 
+                }
+
+                ref.trackNum = 0;
+            }
+            else
+            {
+                if(DEBUG) console.log(`(trackNum:${ref.trackNum}) = (HISTORY[${GLOBALS.historyPos}].trackNum:${HISTORY[GLOBALS.historyPos].trackNum}) + 1`)
+                ref.trackNum     = HISTORY[GLOBALS.historyPos].trackNum + 1;
+                ref.source       = GLOBALS.currentSource;
+            }
+        }
+        else
+        // If the HISTORY is empty play the first track from the source indicated by the
+        // top of the playlist UI
+        {  
+            ref.trackNum     = 0;
+            ref.source       = document.querySelector("#trackList > tbody > tr > td").className.match( CONFIG.iconCSS[SPOTIFY_SOURCE] ) ?
+                SPOTIFY_SOURCE : LOCAL_SOURCE; 
+        }
+    }
+}
 
 const getPlaylistOfCurrentTrack = () =>
 {

@@ -18,7 +18,7 @@ Install node dependencies
 A configuration to manage the service via `launchctl` is included. Note that to use the provided `com..lofy.plist` configuration the `WorkingDirectory` needs to be modified in accordance with the setup.
 
 ```bash
-	# Load the service 
+	# Load the service (not persistent after a reboot) 
 		launchctl load conf/com..lofy.plist
 
 	# Start/Stop the service

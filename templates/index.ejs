@@ -12,8 +12,9 @@
         <% if (route == "/home") 
         { %>
             <div tabIndex="-1" id="bar">
-                <div tabIndex="-1" id="playlistToggle" class="clickable nf nf-mdi-menu"></div>
-                <div tabIndex="-1" id="coverToggle" class="clickable nf nf-mdi-music_box"></div>
+                <div tabIndex="-1" id="playlistToggle" class="floatLeft clickable nf nf-mdi-menu"></div>
+                <div tabIndex="-1" id="coverToggle"    class="floatLeft clickable nf nf-mdi-music_box"></div>
+                <div tabIndex="-1" id="shuffleToggle"  class="floatLeft clickable nf nf-mdi-shuffle_variant"></div>
                 
                 <div tabIndex="-1" id="previous"       class="clickable nf nf-mdi-skip_previous"></div>
                 <div tabIndex="-1" id="pauseToggle"    class="clickable nf nf-fa-play"></div> 
@@ -50,8 +51,8 @@
                     </thead>
                     <tbody></tbody>
                 </table>
-                <img id="cover">
             </div>
+            <img id="cover">
 
 
             <!-- Dummy audio player -->

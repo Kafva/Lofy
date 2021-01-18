@@ -17,4 +17,5 @@ misc/*
 ssl/*
 local/*
 playlists/*
+_playlists/*
 *.log

@@ -3,6 +3,10 @@ const SPOTIFY_SOURCE = 'spotify';
 const LOCAL_SOURCE   = 'local';
 
 const CONFIG = {
+    //** Default config **/
+    defaultLocalPlaylist: '-',
+    defaultSpotifyPlaylist: 'Df',
+    
     historyLimit: 50,
     volumeStep: 5,
     seekStepMs: 5000, // (ms)
@@ -23,6 +27,8 @@ const CONFIG = {
     coverOpacity: 0.6,
     coverHeight: 300,
     coverWidth: 300,
+    tintColor: 'var(--tint)',
+    textColor: 'var(--text)',
 
     scrollPixels: 400,
 
@@ -36,10 +42,6 @@ const CONFIG = {
     // The dummy track queued after every song to allow for an OK transisation between
     // local/spotify tracks (we cannot reliably pause the spotify player upon the end of a track)
     spotifySilence: "spotify:track:7cctPQS83y620UQtMd1ilL",
-
-    //** Default config **/
-    defaultLocalPlaylist: 'purpose',
-    defaultSpotifyPlaylist: '✨',
 
     //** Shortcuts **/
     pausePlay: ' ',
@@ -58,6 +60,7 @@ const CONFIG = {
 }
 
 var GLOBALS = {
+    shuffle: true,
     currentSource: null,
 
     // To show the progress indicator for spotify the 'timeupdate' events from

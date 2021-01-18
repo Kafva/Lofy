@@ -51,7 +51,7 @@ window.onSpotifyWebPlaybackSDKReady = () =>
                     GLOBALS.historyPos--;
                 }
 
-                playNextTrack(player);
+                playNextTrack(player, newPlaylist=SPOTIFY_SOURCE);
             }
 
             // Update the playlist UI with tracks from the current playlist (and remove previous tracks)
@@ -80,10 +80,10 @@ window.onSpotifyWebPlaybackSDKReady = () =>
         })();
 
         // Event listener for changes to the playlist <select> element
-        document.querySelector("#localPlaylist").addEventListener('change', () => 
+        document.querySelector("#localPlaylist").addEventListener('change', async () => 
         { 
             // Set the global track counter
-            updatePlaylistCount(LOCAL_SOURCE);
+            await updatePlaylistCount(LOCAL_SOURCE);
             
             if ( getCurrentPlaylist(LOCAL_SOURCE) != CONFIG.noContextOption )
             {
@@ -94,7 +94,7 @@ window.onSpotifyWebPlaybackSDKReady = () =>
                     GLOBALS.historyPos--;
                 }
 
-                playNextTrack(player);
+                playNextTrack(player, newPlaylist=LOCAL_SOURCE);
             }
             
             // Add tracks to the UI

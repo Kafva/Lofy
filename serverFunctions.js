@@ -35,8 +35,11 @@ module.exports = (CONFIG) =>
     const getLineCount = async (filePath) => 
     // Get line count via `wc`
     {
-        const { stdout } = await exec(`cat ${filePath} | wc -l`);
-        return parseInt(stdout);
+        try
+        {
+            const { stdout } = await exec(`cat '${filePath}' | wc -l`);
+            return parseInt(stdout);
+        } catch(e) { console.error(e); return -1; }
     };
     
     const getMusicMeta = async (filePath) => 
@@ -173,8 +176,8 @@ module.exports = (CONFIG) =>
 
             let tracks_meta = [];
             
-            // The track_id corresponds to the line in the playlist file and starts from 1
-            let track_id = 1;
+            // The track_id corresponds to the line in the playlist file and starts from **0**
+            let track_id = 0;
 
             for (let track of tracks)
             {
@@ -248,24 +251,31 @@ module.exports = (CONFIG) =>
         // ]
        
         local_playlists = await getLocalPlaylists();
+        let playlistName = unescape(req.params.playlist); 
         
-        if ( local_playlists.some( p => p.name == req.params.playlist ) )
+        if ( local_playlists.some( p => p.name == playlistName ) )
         {
-            track_count = await getLineCount( `${CONFIG.local_playlists_dir}/${req.params.playlist}.txt` );
+            try
+            {
+                await fs.promises.stat(`${CONFIG.local_playlists_dir}/${playlistName}.txt`);
+            }
+            catch (e) { console.error(e); errorRedirect(res, "No such playlist", true); return; }
+            
+            track_count = await getLineCount( `${CONFIG.local_playlists_dir}/${playlistName}.txt` );
 
-            if ( parseInt(req.params.trackNum) <= track_count && parseInt(req.params.trackNum) > 0 )
+            if ( parseInt(req.params.trackNum) < track_count && parseInt(req.params.trackNum) >= 0 )
             {
                 // Fetch the .trackNum line from the playlist text file with the path to the sound file
-                let tracks = (await fs.promises.readFile(`${CONFIG.local_playlists_dir}/${req.params.playlist}.txt`, 'utf-8')).toString().split('\n');
+                let tracks = (await fs.promises.readFile(`${CONFIG.local_playlists_dir}/${playlistName}.txt`, 'utf-8')).toString().split('\n');
 
                 try
                 {
-                    stream = fs.createReadStream( tracks[ req.params.trackNum - 1 ] );
+                    stream = fs.createReadStream( tracks[ req.params.trackNum ] );
                 }
-                catch (e) { console.error(`getTrackAudio(): Can't find ${tracks[ req.params.trackNum - 1 ]}`); }
+                catch (e) { console.error(`getTrackAudio(): Can't find ${tracks[ req.params.trackNum]}`); return; }
                 
                 // Determine the Content-type of the sound file
-                metadata = await getMusicMeta(  tracks[ req.params.trackNum - 1 ] );
+                metadata = await getMusicMeta(  tracks[ req.params.trackNum] );
                 if (cover)
                 {
                     if ( metadata.common.picture != undefined )
@@ -280,11 +290,7 @@ module.exports = (CONFIG) =>
                 }
                 else
                 {
-                    if (metadata.format.container.match(/M4A/i) )
-                    {
-                        res.type('audio/x-m4a');
-                    }
-                    else { res.type('audio/mpeg'); }
+                    res.type('audio/mpeg');
 
                     // Send a readable stream with the audio,
                     // Client usage:
@@ -292,9 +298,9 @@ module.exports = (CONFIG) =>
                     return res.send(stream);
                 }
             }
-            else { errorRedirect(res, `'${req.params.playlist}' only has ${track_count} tracks`, textOnly=true); }
+            else { errorRedirect(res, `'${playlistName}' only has ${track_count} tracks`, textOnly=true); }
         }
-        else { errorRedirect(res, `No such playlist: ${req.params.playlist}`, textOnly=true); }
+        else { errorRedirect(res, `No such playlist: ${playlistName}`, textOnly=true); }
     }
 
     return { getTokenParams, errorRedirect, stateString, getAuthHeader, tokenRequest, getLocalPlaylists, getTrackData };

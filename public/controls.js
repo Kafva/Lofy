@@ -53,6 +53,15 @@ const keyboardHandler = (event, player) =>
     }
 }
 
+//**** MEDIA KEYS *****/
+// The spotify <iframe> contains the actual web player and its own mediaSession object which we can't access due to SOP
+// https://github.com/spotify/web-playback-sdk/issues/105
+// https://stackoverflow.com/questions/25098021/securityerror-blocked-a-frame-with-origin-from-accessing-a-cross-origin-frame
+
+// As a work-around we use a dummy <audio> object which we register `ActionHandlers` for,
+// the spotify iframe will still catch <PAUSE> events but our own dummy object will be notified
+// as well when this occurs. 
+
 const mediaHandlers = (player) =>
 {
     if ('mediaSession' in navigator) 
@@ -136,6 +145,9 @@ const clickHandler = (player) =>
         case 'coverToggle':
             modifyVisibility("#cover", CONFIG.coverOpacity, checkSrc=true);
             break;
+        case 'shuffleToggle':
+            toggleShuffle();
+            break;
         case 'pauseToggle':
             pauseToggle(player);    
             break;
@@ -159,4 +171,3 @@ const clickHandler = (player) =>
             break;
     }
 }
-

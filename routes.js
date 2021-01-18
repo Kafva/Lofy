@@ -219,13 +219,13 @@ module.exports = (fastify,functions,CONFIG) =>
     });
     
     fastify.get('/audio/:playlist/:trackNum', (req, res) => 
-    // The trackNum paramater starts from 1
+    // The trackNum paramater starts from 0
     {
         functions.getTrackData(req,res);
     });
 
     fastify.get('/cover/:playlist/:trackNum', (req, res) => 
-    // Returns the cover art for the specified track (the trackNum paramater starts from 1)
+    // Returns the cover art for the specified track (the trackNum paramater starts from 0)
     {
         functions.getTrackData(req,res,cover=true);
     });

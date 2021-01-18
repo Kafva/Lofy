@@ -67,18 +67,29 @@ audio { display: none; }
     overflow: hidden;
 }
 
+#shuffleToggle 
+{ 
+    border: thin solid var(--text);
+    border-radius: 50%;
+}
+
+#playlistToggle, #coverToggle 
+/* Set a transparent border for alignment */
+{ 
+    border: thin solid rgba(0,0,0,0);
+    border-radius: 50%;
+}
+
 #bar > select
 {
     opacity: 1.0;
     background-color: var(--bkg);
     color: var(--text);
     float: right;
-}
+    max-width: 70px;
+    text-overflow: ellipsis;
+    overflow: hidden;
 
-#playlistToggle, #coverToggle
-{
-    float: left;
-    font-size: medium;
 }
 
 .seperator
@@ -86,7 +97,7 @@ audio { display: none; }
     margin: 10px;
 }
 
-/********* Cover and container *******/
+/********* Flex container *******/
 
 #container
 /* The trackList and cover are setup inside a flexbox */
@@ -106,6 +117,7 @@ audio { display: none; }
     height: fit-content;
 }
 
+/****** Cover ********/
 @keyframes fadeIn {
     from { opacity: 0; }
     to   { opacity: 0.6; }
@@ -118,8 +130,11 @@ audio { display: none; }
     
     width: 200px;
     height: 200px;
-    scale: 0.9;
     border-radius: 5%;
+    
+    /* Avoid image distortion */
+    min-width: 200px;
+    min-height: 200px;
 
     animation: fadeIn 0.5s;
 
@@ -128,8 +143,6 @@ audio { display: none; }
     opacity: 0;
     transition: opacity 0.5s linear;
 }
-
-img#cover:hover { opacity: 0.9; }
 
 /********** Track list **********/
 
@@ -143,9 +156,8 @@ img#cover:hover { opacity: 0.9; }
     border-collapse: collapse;
     text-align: right;
 
-    margin-left: 10px;
-    margin-right: 10px;
-    
+    margin-left: 15px;
+    margin-right: 15px;
     padding: 15px;
     
     animation: fadeIn100 0.5s;
@@ -156,14 +168,12 @@ img#cover:hover { opacity: 0.9; }
     transition: opacity 0.5s linear;
 }
 
+/******** Track items *******/
 .trackItem
 {
     opacity: 1.0;
     max-height: 18px;
-    max-width: 100px;
     margin-bottom: 5px;
-    text-overflow: ellipsis;
-    overflow: hidden;
     
     border-bottom: 1px solid rgba(65, 64, 64, 0.5)
 }
@@ -175,17 +185,12 @@ img#cover:hover { opacity: 0.9; }
     opacity: 0.5;
 }
 
-/* Allow for the playbutton to appear 'over' the source indicator for a track */
-.nf-fa-play:before {
-    content: "\f04b" !important;
-}
-
-.amp
+.trackItem > td
 {
-    content: url("resc/amp.gif");
-    align-content: right;
-    height: 20px;
-    width: 18px;
+    /* Set an upper limit for the width of column text in the playlist */
+    text-overflow: ellipsis;
+    overflow: hidden;
+    max-width: 250px;
 }
 
 td,th { padding-right: 14px;  }
@@ -195,7 +200,28 @@ thead
     border-bottom: 1px solid rgba(65, 64, 64, 0.5)
 }
 
+/********* MISC *********/
+
+.amp
+{
+    content: url("resc/amp.gif");
+    align-content: right;
+    height: 20px;
+    width: 18px;
+}
+
+/* Allow for the playbutton to appear 'over' the source indicator for a track */
+.nf-fa-play:before {
+    content: "\f04b" !important;
+}
+
 .clickable
 {
     cursor: pointer;
+}
+
+.floatLeft
+{
+    float: left;
+    font-size: medium;
 }
