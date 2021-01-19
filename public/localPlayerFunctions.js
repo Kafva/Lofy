@@ -40,14 +40,16 @@ const getLocalPlaylistJSON = async (name) =>
         {
             return playlists[playlistIndex];
         }
-        else { return null; }
+        else { throw `Could not find playlist: ${name}`; }
     }
     else { return playlists; }
 }
 
 const setLocalPlaylistOptions = async () =>
 {
-    let playlists = await getLocalPlaylistJSON();
+    let playlists = null;
+    try { playlists = await getLocalPlaylistJSON(); }
+    catch (e) { console.error(e); return; }
     
     // Default option when no context is found
     let opt = document.createElement("option"); 

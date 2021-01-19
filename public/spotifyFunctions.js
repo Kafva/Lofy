@@ -61,7 +61,9 @@ const InitSpotifyPlayer = async (spotifyPlayer) =>
     });
     
     // Set volume to <default> %
-    setSpotifyVolume(-1, CONFIG.defaultPercent);
+    try { setSpotifyVolume(-1, CONFIG.defaultPercent); }
+    catch (e) { console.error(e); }
+
 
     // Fetch the users playlists and add them as options in the UI
     await setupSpotifyPlaylistsUI();
@@ -77,9 +79,13 @@ const getCurrentSpotifyTrack = async () =>
         headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
     });
 
-    let body = await res.text();
-    try { return JSON.parse(body)  }
-    catch (e) { console.error(e,body); return null; }
+    let body = null;
+    try 
+    { 
+        body = await res.text();
+        return JSON.parse(body)  
+    }
+    catch (e) { console.error(e,body); }
 }
 
 const setSpotifyVolume = async (diff, newPercent=null ) =>
@@ -97,7 +103,7 @@ const setSpotifyVolume = async (diff, newPercent=null ) =>
             { 
                 newPercent = _json['device']['volume_percent'] + diff;
             }
-            else { console.error("Failed to fetch device info"); }
+            else { throw("Failed to fetch device info"); }
         }
         
         if ( 0 <= newPercent && newPercent <= 100 )
@@ -109,10 +115,10 @@ const setSpotifyVolume = async (diff, newPercent=null ) =>
 
             document.querySelector("#volume").innerText = `${newPercent} %`;
         }
-        else { console.error(`setSpotifyVolume(): invalid percent ${newPercent}`); }
+        else { throw(`Invalid percent ${newPercent}`); }
         
     }
-    else { console.error(`setSpotifyVolume(): ${CONFIG.inactivePlayer}`); }
+    else { throw(`Inactive player: ${CONFIG.inactivePlayer}`); }
 }
 
 const seekSpotifyPlayback = async (ms) =>
@@ -135,18 +141,21 @@ const getPlaylistJSON = async (name) =>
 // Or the base JSON with all playlists if no name is given
 {
     // Edge-case if the context doesn't correspond to a playlist
-    if (name == CONFIG.noContextOption) { return null; }
+    if ( name == CONFIG.noContextOption ){ throw(`Cant fetch tracks for ${CONFIG.noContextOption}`); }
     
     let res = await fetch('https://api.spotify.com/v1/me/playlists', {
         method: 'GET',
         headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
     });
     
-    let body = await res.text();
     let playlists = null;
     
-    try { playlists = JSON.parse(body)['items'];  }
-    catch (e) { console.error(e,devices); return null; }
+    try 
+    { 
+        let body = await res.text();
+        playlists = JSON.parse(body)['items'];  
+    }
+    catch (e) { throw(e,devices); }
 
     if (name != null)
     {
@@ -157,6 +166,8 @@ const getPlaylistJSON = async (name) =>
                 return item;
             }   
         }
+
+        throw(`'${name}' not found among playlists`);
     }
     else { return playlists; }
 }
@@ -169,11 +180,14 @@ const getDeviceJSON = async () =>
         headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
     });
 
-    let body = await res.text();
     let devices = null;
     
-    try { devices = JSON.parse(body)['devices']; }
-    catch (e) { console.error(e,devices); return null; }
+    try 
+    { 
+        let body = await res.text();
+        devices = JSON.parse(body)['devices']; 
+    }
+    catch (e) { throw(e); }
 
     for (let item of devices)
     {
@@ -200,7 +214,7 @@ const getPlayerJSON = async () =>
     {
         body = JSON.parse(body)
     }
-    catch(e){ console.error(e); return null; }
+    catch(e){ throw(e); }
 
     return body;
 }

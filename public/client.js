@@ -78,7 +78,11 @@ window.onSpotifyWebPlaybackSDKReady = () =>
             // Set the global track counter
             Functions.updatePlaylistCount(STATE, SPOTIFY_SOURCE);
 
-            if ( Functions.getCurrentPlaylist(SPOTIFY_SOURCE) != CONFIG.noContextOption )
+            let currentPlaylist = null;
+            try { currentPlaylist = Functions.getCurrentPlaylist(SPOTIFY_SOURCE); }
+            catch (e) { console.error(e); return; }
+
+            if ( currentPlaylist != CONFIG.noContextOption )
             {
                 while ( STATE.historyPos != 0 )
                 // Remove any 'future' items in the HISTORY to guarantee a new track
@@ -87,7 +91,7 @@ window.onSpotifyWebPlaybackSDKReady = () =>
                     STATE.historyPos--;
                 }
 
-                Functions.playNextTrack(STATE, HISTORY, spotifyPlayer, newPlaylist=SPOTIFY_SOURCE);
+                Functions.playNextTrack(STATE, HISTORY, spotifyPlayer, SPOTIFY_SOURCE);
             }
 
             // Update the playlist UI with tracks from the current playlist (and remove previous tracks)
@@ -121,7 +125,11 @@ window.onSpotifyWebPlaybackSDKReady = () =>
             // Set the global track counter
             await Functions.updatePlaylistCount(STATE, LOCAL_SOURCE);
             
-            if ( Functions.getCurrentPlaylist(LOCAL_SOURCE) != CONFIG.noContextOption )
+            let currentPlaylist = null;
+            try { currentPlaylist = Functions.getCurrentPlaylist(LOCAL_SOURCE); }
+            catch (e) { console.error(e); return; }
+            
+            if ( currentPlaylist != CONFIG.noContextOption )
             {
                 while ( STATE.historyPos != 0 )
                 // Remove any 'future' items in the HISTORY to guarantee a new track
@@ -130,7 +138,7 @@ window.onSpotifyWebPlaybackSDKReady = () =>
                     STATE.historyPos--;
                 }
 
-               Functions.playNextTrack(STATE, HISTORY, spotifyPlayer, newPlaylist=LOCAL_SOURCE);
+               Functions.playNextTrack(STATE, HISTORY, spotifyPlayer, LOCAL_SOURCE);
             }
             
             // Add tracks to the UI
