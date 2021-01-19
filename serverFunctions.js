@@ -250,7 +250,7 @@ module.exports = (CONFIG) =>
         //     ]}, ... 
         // ]
        
-        local_playlists = await getLocalPlaylists();
+        let local_playlists = await getLocalPlaylists();
         let playlistName = unescape(req.params.playlist); 
         
         if ( local_playlists.some( p => p.name == playlistName ) )

@@ -1,32 +1,6 @@
-const addPlayerListeners = (STATE, HISTORY, player) =>
-{
-    // See https://developer.spotify.com/documentation/web-playback-sdk/quick-start/
-    // Error handling
-    const errors = ['initialization_error', 'authentication_error', 'account_error', 'playback_error'];
-    errors.forEach( (item) => 
-    {
-        player.addListener(item, ({message}) => console.error(`${item}:`, message)  );
-    });
+import { DEBUG, CONFIG } from './clientConfig.js'
 
-    // Playback status updates
-    player.addListener('player_state_changed', state => 
-    { 
-        if(DEBUG) console.log('player_state_changed', state); 
-        handleSpotifyTrackEnd(STATE, HISTORY, player);
-    });
-
-    // Ready
-    player.addListener('ready', ({ device_id }) => 
-    { 
-        console.log('Ready with Device ID', device_id);
-        InitSpotifyPlayer(STATE, HISTORY, player);
-    });
-
-    // Not Ready
-    player.addListener('not_ready', ({ device_id }) => { console.log('Device ID has gone offline', device_id); });
-}
-
-const refreshToken = async (player) =>
+const refreshToken = async (spotifyPlayer) =>
 {
     // Wait the time specified by expires_in and after that send a request to the
     // servers /refresh endpoint to update the access_token
@@ -37,6 +11,7 @@ const refreshToken = async (player) =>
 
     xhr.onload = () => 
     {
+        let res = null;
         // The response from the server should be a redirect to /home
         // with new parameters
         if(DEBUG) console.log("Recived response from /refresh: ", xhr.response, JSON.parse(xhr.response), );
@@ -57,21 +32,19 @@ const refreshToken = async (player) =>
         }
 
         // Restart the refreshToken() loop
-        refreshToken(player);
+        refreshToken(spotifyPlayer);
     };
     
     xhr.send();
 }
 
-//********** Spotify API Actions ******************/
-
-const InitSpotifyPlayer = async (STATE, HISTORY, player) =>
+const InitSpotifyPlayer = async (spotifyPlayer) =>
 {
-    // Activate the web player (without starting any music)
+    // Activate the web spotifyPlayer (without starting any music)
     await fetch(`https://api.spotify.com/v1/me/player`, {
         method: 'PUT',
         body: JSON.stringify({ 
-            device_ids: [ player._options.id ],
+            device_ids: [ spotifyPlayer._options.id ],
             play: false
         }),
         headers: {
@@ -82,7 +55,7 @@ const InitSpotifyPlayer = async (STATE, HISTORY, player) =>
     await new Promise(r => setTimeout(r, CONFIG.newTrackDelay));
     
     // Set auto-repeat state
-    await fetch(`https://api.spotify.com/v1/me/player/repeat?state=${CONFIG.defaultAutoRepeatState}&device_id=${player._options.id}`, {
+    await fetch(`https://api.spotify.com/v1/me/player/repeat?state=${CONFIG.defaultAutoRepeatState}&device_id=${spotifyPlayer._options.id}`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
     });
@@ -92,81 +65,9 @@ const InitSpotifyPlayer = async (STATE, HISTORY, player) =>
 
     // Fetch the users playlists and add them as options in the UI
     await setupSpotifyPlaylistsUI();
-
-    // Update the playlist track counter
-    updatePlaylistCount(STATE, SPOTIFY_SOURCE);
-
-    // Add the tracks from the playlist to the UI
-    addPlaylistTracksToUI(STATE, HISTORY, SPOTIFY_SOURCE, player);
 }
 
-const playSpotifyTrack = async (STATE, HISTORY, playlistName, player, trackNum=null, addToHistory=true) => 
-// Start playback with a random track from the provided playlist followed by silence
-// If a prevIndex from HISTORY is provided the corresponding track from the playlist will be chosen
-{
-    STATE.currentSource = SPOTIFY_SOURCE;
-
-    var track = null;
-    tracks_json   = await getTracksJSON(STATE, playlistName);
-    
-    if ( trackNum == null )
-    /* (historyPos:0) ==> Play a new track */
-    {
-        // NOTE that we decrement the trackNum to get the array index in tracks_json
-        trackNum = getNewTrackNumber(HISTORY, STATE.currentSource, STATE.currentPlaylistCount.spotify );
-   
-        // If we are playing a new track we should add it to the HISTORY
-        // but we should also add explicitly played tracks to the HISTORY         
-    }
-    
-    if(DEBUG) console.log(`Playing new track=${trackNum} tracks_json[${trackNum}] (addToHistory=${addToHistory}):`, tracks_json);
-
-    // NOTE that we add the trackNum++ to the HISTORY since it is 
-    if (addToHistory){ addTrackToHistory(HISTORY, SPOTIFY_SOURCE, trackNum, tracks_json[trackNum].track.uri); }
-
-    /* (historyPos >= 1) ==> Play next track in HISTORY */
-    // The next track is guaranteed to be a Spotify track from the base selection in `playPrevTrack()`
-    // and is passed as an argument
-    
-    track     = tracks_json[trackNum].track; 
-    
-    if(DEBUG) console.log(`Track JSON for ${track.name}:`, trackNum, track);
-
-    // Start playback 
-    await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${player._options.id}`, {
-        method: 'PUT',
-        body: JSON.stringify( { uris: [ track.uri, CONFIG.spotifySilence ] } ),
-        //body: JSON.stringify({ context_uri: (await getPlaylistJSON(playlistName)).uri }),
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${getCookiesAsJSON().access_token}`
-        },
-    });
-
-    // Fetch the current track (after a short delay)
-    await new Promise(r => setTimeout(r, CONFIG.newTrackDelay));
-    updateCurrentTrackUI(HISTORY, STATE.historyPos, STATE.currentSource);
-
-    // Start the dummy player and set a value for the dummyProgressOffset
-    updateDummyPlayerStatus(STATE.currentSource, CONFIG.dummyPlay);
-    setDummyProgressOffset(STATE);
-
-    // Set a value for the duration on the progress bar
-    let sec = Math.floor(( track.duration_ms /1000)%60);
-    if (sec <= 9 && sec >= 0){ sec = `0${sec}`; }
-    
-    STATE.currentDuration = 
-    {
-        sec: sec,
-        min: Math.floor((track.duration_ms/1000)/60) 
-    } 
-
-    // Update the volume indicator (relevant after a switch from the localPlayer)
-    document.querySelector("#volume").innerText = `${ Math.floor( (await getPlayerJSON()).device.volume_percent ) } %`;
-
-    // Setup media Session metadata
-    setupMediaMetadata(STATE, HISTORY);
-}
+//********** Spotify API Actions ******************/
 
 const getCurrentSpotifyTrack = async () =>
 {
@@ -181,63 +82,17 @@ const getCurrentSpotifyTrack = async () =>
     catch (e) { console.error(e,body); return null; }
 }
 
-const toggleSpotifyPlayback = async (STATE, HISTORY, playlistName, player, pauseOnly=false) => 
-{
-    //*** NOTE that one cannot directly ['index'] the return value from an async function */
-    let _json = await getDeviceJSON()
-    if (_json != null && _json != undefined)
-    {
-        if (!_json['is_active'])
-        // If the player is not active start it
-        {
-            if (!pauseOnly)
-            {
-                await playSpotifyTrack(STATE, HISTORY, playlistName, player);
-            }
-        }
-        else
-        {
-            _json = await getPlayerJSON()
-
-            if (_json != null && _json != undefined)
-            {
-                if (_json['is_playing'])
-                {
-                    await fetch(`https://api.spotify.com/v1/me/player/pause`, {
-                        method: 'PUT',
-                        headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
-                    });
-                    updateDummyPlayerStatus(STATE.currentSource, CONFIG.dummyPause);
-                }
-                else
-                {
-                    if(!pauseOnly)
-                    {
-                        await fetch(`https://api.spotify.com/v1/me/player/play`, {
-                            method: 'PUT',
-                            headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
-                        });
-                        updateDummyPlayerStatus(STATE.currentSource, CONFIG.dummyPlay);
-                    }
-                }
-            }
-            else { console.error(`toggleSpotifyPlayback(): getPlayerJSON() ==> ${_json}`); }
-        }
-    }
-    else { console.error(`toggleSpotifyPlayback(): getDeviceJSON() ==> ${_json}`); }
-}
-
 const setSpotifyVolume = async (diff, newPercent=null ) =>
 // Change the volume by diff percent or to a static value
 {
-    let _json = await getDeviceJSON()
+    let _json = await getDeviceJSON();
     if (_json['is_active'])
     {
         if (newPercent == null)
         // Use diff paramater
         {
             // Fetch the current volume
-            _json = await getPlayerJSON()
+            _json = await getPlayerJSON();
             if(_json['device'] != undefined)
             { 
                 newPercent = _json['device']['volume_percent'] + diff;
@@ -287,13 +142,13 @@ const getPlaylistJSON = async (name) =>
         headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
     });
     
-    body = await res.text();
+    let body = await res.text();
     let playlists = null;
     
     try { playlists = JSON.parse(body)['items'];  }
     catch (e) { console.error(e,devices); return null; }
 
-    if (name != false)
+    if (name != null)
     {
         for (let item of playlists)
         {
@@ -314,14 +169,15 @@ const getDeviceJSON = async () =>
         headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
     });
 
-    body = await res.text();
+    let body = await res.text();
+    let devices = null;
     
-    try { devices = JSON.parse(body)['devices'];  }
+    try { devices = JSON.parse(body)['devices']; }
     catch (e) { console.error(e,devices); return null; }
 
     for (let item of devices)
     {
-        if (item['name'] == CONFIG.playerName)
+        if (item['name'] == CONFIG.spotifyPlayerName)
         {
             return item;
         }   
@@ -339,7 +195,7 @@ const getPlayerJSON = async () =>
     
     // Instead of using a readable stream we can fetch the complete response body
     // with a Promise via text()
-    body = await res.text();
+    let body = await res.text();
     try
     {
         body = JSON.parse(body)
@@ -349,73 +205,11 @@ const getPlayerJSON = async () =>
     return body;
 }
 
-const getTracksJSON = async (STATE, playlistName) =>
-{
-    if ( playlistName == CONFIG.noContextOption ){ return null; }
-    playlist_json = await getPlaylistJSON(playlistName);
-    
-    // The API only allows for 100 tracks to be returned per request, we must therefore issue several fetches
-    // to aquire all the tracks of a playlist
-    if ( STATE.currentPlaylistCount.spotify == null && getCurrentPlaylist(SPOTIFY_SOURCE) == playlistName )
-    { 
-        updatePlaylistCount(STATE, SPOTIFY_SOURCE); 
-    }
-    let tracks = [];
-    
-    while ( tracks.length < playlist_json.tracks.total )
-    {
-        let res = await fetch(`https://api.spotify.com/v1/playlists/${playlist_json.id}/tracks?offset=${tracks.length}`, {
-            method: 'GET',
-            headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
-        });
-
-        body = await res.text();
-
-        try 
-        { 
-            tracks = tracks.concat( JSON.parse(body)['items'] );  
-        }
-        catch (e) { console.error(e); return null; }
-    }
-
-    return tracks;
-}
-
 //************** HELPER ***************/
-
-const handleSpotifyTrackEnd = async (STATE, HISTORY, player) =>
-{
-    if ( STATE.currentSource == SPOTIFY_SOURCE )
-    {
-        track = await getCurrentSpotifyTrack();
-    
-        if ( track.item.uri == CONFIG.spotifySilence )
-        // Check if we are currently listening to 'silence'
-        {
-            if(DEBUG) console.log(`Listening to: ${track.item.name}`);
-            
-            if ( STATE.mutexTaken == false)
-            // Ensure that no other 'player_state_change' event is in the
-            // process of starting a new track
-            {
-                STATE.mutexTaken = true;
-                if(DEBUG) console.log("Mutex taken!");
-
-                playNextTrack(STATE, HISTORY, player);
-
-                // Short wait before releasing the mutex
-                await new Promise(r => setTimeout(r, CONFIG.newTrackDelay));
-                STATE.mutexTaken = false;
-                if(DEBUG) console.log("Mutex released!");
-            }
-        }
-    }
-
-} 
 
 const setupSpotifyPlaylistsUI = async () =>
 {
-    let playlists = await getPlaylistJSON(name=false);
+    let playlists = await getPlaylistJSON();
 
     // Determine the current playlist (if any)
     let playlist_url = false;
@@ -456,3 +250,32 @@ const setupSpotifyPlaylistsUI = async () =>
     }
 
 }
+
+const getCookiesAsJSON = () =>
+{
+    let param_dict = {};
+    for (let obj of document.cookie.split("; "))
+    { 
+        let [key,val] = obj.split("=");
+        if (key == "expires_in")
+        {
+            param_dict[key] = parseInt(val);
+        }
+        else { param_dict[key] = val; }
+    }
+
+    return param_dict;
+}
+
+//********** EXPORTS ******************/
+export { 
+    // client.js
+    refreshToken, 
+    
+    // clientFunctions.js
+    InitSpotifyPlayer, setSpotifyVolume, seekSpotifyPlayback,
+    getDeviceJSON, getPlayerJSON, getPlaylistJSON, getCurrentSpotifyTrack,
+
+    // client.js + clientFunctions.js
+    getCookiesAsJSON,
+};

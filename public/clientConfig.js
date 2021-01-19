@@ -4,14 +4,14 @@ const LOCAL_SOURCE   = 'local';
 
 const CONFIG = Object.freeze({
     //** Default config **/
-    defaultLocalPlaylist: 'Justin Bieber',
-    defaultSpotifyPlaylist: '✨',
+    defaultLocalPlaylist: '-',
+    defaultSpotifyPlaylist: '🌙',
     
     historyLimit: 50,
     volumeStep: 5,
     seekStepMs: 5000, // (ms)
     defaultPercent: 20,
-    playerName: 'Lofy',
+    spotifyPlayerName: 'Lofy',
     inactivePlayer: 'Player inactive',
     pauseClass: 'clickable nf nf-fa-pause',
     playClass: 'clickable nf nf-fa-play',
@@ -42,7 +42,7 @@ const CONFIG = Object.freeze({
     },
     
     // The dummy track queued after every song to allow for an OK transisation between
-    // local/spotify tracks (we cannot reliably pause the spotify player upon the end of a track)
+    // local/spotify tracks (we cannot reliably pause the spotify spotifyPlayer upon the end of a track)
     spotifySilence: "spotify:track:7cctPQS83y620UQtMd1ilL",
 
     //** Shortcuts **/
@@ -61,3 +61,5 @@ const CONFIG = Object.freeze({
     seekForward: 'L',
     debugInfo: 'D',
 });
+
+export { DEBUG, SPOTIFY_SOURCE, LOCAL_SOURCE, CONFIG };

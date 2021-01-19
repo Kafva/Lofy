@@ -1,5 +1,7 @@
+import { DEBUG, CONFIG } from './clientConfig.js'
+import * as Functions    from './clientFunctions.js'
 
-const keyboardHandler = (STATE, HISTORY, player, event) => 
+const keyboardHandler = (STATE, HISTORY, spotifyPlayer, event) => 
 {
     if(DEBUG) console.log(`-------- ${event.key} | (shift:${event.shiftKey}) ----------`)   
 
@@ -20,7 +22,7 @@ const keyboardHandler = (STATE, HISTORY, player, event) =>
             case CONFIG.pausePlay:
                 // Prevent <SPACE> from scrolling
                 event.preventDefault();
-                pauseToggle(STATE, HISTORY, player);
+                Functions.pauseToggle(STATE, HISTORY, spotifyPlayer);
                 break;
         }
     }
@@ -29,25 +31,25 @@ const keyboardHandler = (STATE, HISTORY, player, event) =>
         switch(event.key)
         {
             case CONFIG.debugInfo:
-                getDebug(STATE,HISTORY);
+                Functions.getDebug(STATE,HISTORY);
                 break;
             case CONFIG.volumeUp:
-                setVolume(STATE.currentSource, CONFIG.volumeStep);
+                Functions.setVolume(STATE.currentSource, CONFIG.volumeStep);
                 break;
             case CONFIG.volumeDown:
-                setVolume(STATE.currentSource,-CONFIG.volumeStep);
+                Functions.setVolume(STATE.currentSource,-CONFIG.volumeStep);
                 break;
             case CONFIG.next:
-                playNextTrack(STATE, HISTORY, player);
+                Functions.playNextTrack(STATE, HISTORY, spotifyPlayer);
                 break;
             case CONFIG.previous:
-                playPrevTrack(STATE, HISTORY, player);
+                Functions.playPrevTrack(STATE, HISTORY, spotifyPlayer);
                 break;
             case CONFIG.seekForward:
-                seekPlayback(STATE.currentSource, 1);
+                Functions.seekPlayback(STATE.currentSource, 1);
                 break;
             case CONFIG.seekBack:
-                seekPlayback(STATE.currentSource, -1);
+                Functions.seekPlayback(STATE.currentSource, -1);
                 break;
             case CONFIG.scrollBottom:
                 window.scrollTo(0,document.querySelector("#trackList").scrollHeight);
@@ -57,7 +59,7 @@ const keyboardHandler = (STATE, HISTORY, player, event) =>
 }
 
 //**** MEDIA KEYS *****/
-// The spotify <iframe> contains the actual web player and its own mediaSession object which we can't access due to SOP
+// The spotify <iframe> contains the actual web spotifyPlayer and its own mediaSession object which we can't access due to SOP
 // https://github.com/spotify/web-playback-sdk/issues/105
 // https://stackoverflow.com/questions/25098021/securityerror-blocked-a-frame-with-origin-from-accessing-a-cross-origin-frame
 
@@ -65,111 +67,68 @@ const keyboardHandler = (STATE, HISTORY, player, event) =>
 // the spotify iframe will still catch <PAUSE> events but our own dummy object will be notified
 // as well when this occurs. 
 
-const mediaHandlers = (STATE, HISTORY, player) =>
+const mediaHandlers = (STATE, HISTORY, spotifyPlayer) =>
 {
     if ('mediaSession' in navigator) 
     {
-        navigator.mediaSession.setActionHandler(CONFIG.dummyPlay, async () => 
+        navigator.mediaSession.setActionHandler(CONFIG.dummyPlay, () => 
         { 
             if(DEBUG) console.log(`----PLAY---- (${navigator.mediaSession.playbackState})`); 
-            
-            switch(STATE.currentSource)
-            {
-                case SPOTIFY_SOURCE:
-                    // Wait a bit for the spotify player state to update (via the reaction from the iframe) 
-                    // before checking it
-                    await new Promise(r => setTimeout(r, CONFIG.newTrackDelay));
-                    
-                    let _json = await getPlayerJSON();
-
-                    if ( _json['is_playing'] === false )
-                    // If the spotify player is not playing, start it
-                    {
-                        await fetch(`https://api.spotify.com/v1/me/player/play`, {
-                            method: 'PUT',
-                            headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
-                        });
-                    }
-                    updateDummyPlayerStatus(STATE.currentSource, CONFIG.dummyPlay);
-                    break;
-                case LOCAL_SOURCE:
-                    toggleLocalPlayback(LOCAL_SOURCE);
-                    break;
-            }
+            Functions.mediaPlay(STATE.currentSource);
         });
-        navigator.mediaSession.setActionHandler(CONFIG.dummyPause, async () => 
+        navigator.mediaSession.setActionHandler(CONFIG.dummyPause, () => 
         { 
             if(DEBUG) console.log(`----PAUSE---- (${navigator.mediaSession.playbackState})`); 
-           
-            switch(STATE.currentSource)
-            {
-                case SPOTIFY_SOURCE:
-                    // Wait a bit for the spotify player state to update before checking it
-                    await new Promise(r => setTimeout(r, CONFIG.newTrackDelay));
-
-                    let _json = await getPlayerJSON();
-
-                    if ( _json['is_playing'] === true )
-                    // If the spotify player is playing, pause it
-                    {
-                        await fetch(`https://api.spotify.com/v1/me/player/pause`, {
-                            method: 'PUT',
-                            headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
-                        });
-                    }
-                    updateDummyPlayerStatus(STATE.currentSource, CONFIG.dummyPause);
-                    break;
-                case LOCAL_SOURCE:
-                    toggleLocalPlayback();
-                    break;
-            }
+            Functions.mediaPause(STATE.currentSource);
         });
         navigator.mediaSession.setActionHandler('previoustrack', () => 
         { 
             if(DEBUG) console.log("----PREV----");
-            playPrevTrack(STATE, HISTORY, player);
+            Functions.playPrevTrack(STATE, HISTORY, spotifyPlayer);
         });
         navigator.mediaSession.setActionHandler('nexttrack', () => 
         { 
             if(DEBUG) console.log("----NEXT-----"); 
-            playNextTrack(STATE, HISTORY, player);
+            Functions.playNextTrack(STATE, HISTORY, spotifyPlayer);
         });
     }
 }
 
-const clickHandler = (STATE, HISTORY, player) =>
+const clickHandler = (STATE, HISTORY, spotifyPlayer) =>
 {
     switch (event.target.id)
     {
         case 'playlistToggle':
-            modifyVisibility("#trackList");
+            Functions.modifyVisibility("#trackList");
             break;
         case 'coverToggle':
-            modifyVisibility("#cover", CONFIG.coverOpacity, checkSrc=true);
+            Functions.modifyVisibility("#cover", CONFIG.coverOpacity, true);
             break;
         case 'shuffleToggle':
-            toggleShuffle(STATE);
+            Functions.toggleShuffle(STATE);
             break;
         case 'pauseToggle':
-            pauseToggle(STATE, HISTORY, player);    
+            Functions.pauseToggle(STATE, HISTORY, spotifyPlayer);    
             break;
         case 'volumeUp':
-            setVolume(STATE.currentSource, CONFIG.volumeStep);
+            Functions.setVolume(STATE.currentSource, CONFIG.volumeStep);
             break;
         case 'volumeDown':
-            setVolume(STATE.currentSource, -CONFIG.volumeStep);
+            Functions.setVolume(STATE.currentSource, -CONFIG.volumeStep);
             break;
         case 'previous':
-            playPrevTrack(STATE, HISTORY, player);
+            Functions.playPrevTrack(STATE, HISTORY, spotifyPlayer);
             break;
         case 'next':
-            playNextTrack(STATE, HISTORY, player);
+            Functions.playNextTrack(STATE, HISTORY, spotifyPlayer);
             break;
         case 'seekForward':
-            seekPlayback(STATE.currentSource, 1);
+            Functions.seekPlayback(STATE.currentSource, 1);
             break;
         case 'seekBack':
-            seekPlayback(STATE.currentSource, -1);
+            Functions.seekPlayback(STATE.currentSource, -1);
             break;
     }
 }
+
+export { keyboardHandler, mediaHandlers, clickHandler };

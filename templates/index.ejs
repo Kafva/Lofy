@@ -55,24 +55,25 @@
             <img id="cover">
 
 
-            <!-- Dummy audio player -->
+            <!-- Dummy audio spotifyPlayer -->
             <audio id="dummy" controls loop src="resc/silence.m4a"></audio> 
             
-            <!-- Local file player -->
+            <!-- Local file spotifyPlayer -->
             <audio id="localPlayer" controls preload></audio> 
 
             <!-- Spotify iframe injection script -->
             <script src="https://sdk.scdn.co/spotify-player.js"></script>
-            
+
             <!-- Imports -->
-            <script src="clientConfig.js"></script>
-            <script src="clientFunctions.js"></script>
-            <script src="spotifyFunctions.js"></script>
-            <script src="localPlayerFunctions.js"></script>
-            <script src="controls.js"></script>
+            <script type="module" src="clientConfig.js"></script>
+            <script type="module" src="clientFunctions.js"></script>
+            <script type="module" src="spotifyFunctions.js"></script>
+            <script type="module" src="localPlayerFunctions.js"></script>
+            <script type="module" src="controls.js"></script>
 
             <!-- Main script -->
-            <script src="client.js"></script>
+            <script type="module" src="client.js"></script>
+            
         <% } %>
     </body>
 </html>

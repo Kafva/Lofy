@@ -1,3 +1,9 @@
+import { SPOTIFY_SOURCE, LOCAL_SOURCE, CONFIG } from './clientConfig.js';
+import * as SpotifyFunctions from './spotifyFunctions.js';
+import * as LocalFunctions   from './localPlayerFunctions.js';
+import * as Functions        from './clientFunctions.js';
+import * as Controls         from './controls.js';
+
 window.onSpotifyWebPlaybackSDKReady = () => 
 {
     if (document.location.href.match("/home"))
@@ -44,35 +50,35 @@ window.onSpotifyWebPlaybackSDKReady = () =>
         // https://developer.spotify.com/documentation/web-playback-sdk/reference/#objects
         // Create a "Web Playback" object which can be chosen as the device to stream music to
         // (initalised through including a script on the main page)
-        const player = new Spotify.Player({
-            name: CONFIG.playerName,
-            getOAuthToken: cb => { cb( getCookiesAsJSON().access_token  ); }
+        const spotifyPlayer = new Spotify.Player({
+            name: CONFIG.spotifyPlayerName,
+            getOAuthToken: cb => { cb( SpotifyFunctions.getCookiesAsJSON().access_token  ); }
         });
        
-        // Before interacting with (most) API endpoints we need to 'activate' the player (see status from /devices)
+        // Before interacting with (most) API endpoints we need to 'activate' the spotifyPlayer (see status from /devices)
         // the listener for 'ready' will trigger `InitSpotifyPlayer()` to activate it and set shuffle + default volume
-        addPlayerListeners(STATE, HISTORY, player);
+        Functions.addPlayerListeners(STATE, HISTORY, spotifyPlayer);
         
-        // Connect the player
-        player.connect();
+        // Connect the spotifyPlayer
+        spotifyPlayer.connect();
 
         // Add global event listeners
-        window.addEventListener('click',   ()      => clickHandler   (STATE, HISTORY, player)           );
-        window.addEventListener('keydown', (event) => keyboardHandler(STATE, HISTORY, player, event) );
+        window.addEventListener('click',   ()      => Controls.clickHandler   (STATE, HISTORY, spotifyPlayer)           );
+        window.addEventListener('keydown', (event) => Controls.keyboardHandler(STATE, HISTORY, spotifyPlayer, event) );
         
         // Initiate timer for sending a request to /refresh to get a new access_token
-        refreshToken(player);
+        SpotifyFunctions.refreshToken(spotifyPlayer);
 
         // Initiate the mediakey handlers
-        mediaHandlers(STATE, HISTORY, player);
+        Controls.mediaHandlers(STATE, HISTORY, spotifyPlayer);
 
         // Setup the listener for the spotify and local playlist <select> elements
         document.querySelector("#spotifyPlaylist").addEventListener('change', async () => 
         {
             // Set the global track counter
-            updatePlaylistCount(STATE, SPOTIFY_SOURCE);
+            Functions.updatePlaylistCount(STATE, SPOTIFY_SOURCE);
 
-            if ( getCurrentPlaylist(SPOTIFY_SOURCE) != CONFIG.noContextOption )
+            if ( Functions.getCurrentPlaylist(SPOTIFY_SOURCE) != CONFIG.noContextOption )
             {
                 while ( STATE.historyPos != 0 )
                 // Remove any 'future' items in the HISTORY to guarantee a new track
@@ -81,41 +87,41 @@ window.onSpotifyWebPlaybackSDKReady = () =>
                     STATE.historyPos--;
                 }
 
-                playNextTrack(STATE, HISTORY, player, newPlaylist=SPOTIFY_SOURCE);
+                Functions.playNextTrack(STATE, HISTORY, spotifyPlayer, newPlaylist=SPOTIFY_SOURCE);
             }
 
             // Update the playlist UI with tracks from the current playlist (and remove previous tracks)
-            addPlaylistTracksToUI(STATE, HISTORY, SPOTIFY_SOURCE, player);
+            Functions.addPlaylistTracksToUI(STATE, HISTORY, SPOTIFY_SOURCE, spotifyPlayer);
         });
 
         // Setup listeners for the dummy <audio> 
-        document.querySelector("#dummy").onplay  = dummyAudioHandler('playing');
-        document.querySelector("#dummy").onpause = dummyAudioHandler('paused');
+        document.querySelector("#dummy").onplay  = Functions.dummyAudioHandler('playing');
+        document.querySelector("#dummy").onpause = Functions.dummyAudioHandler('paused');
 
         document.querySelector("#dummy").addEventListener('timeupdate', () =>
-        // We will use timeupdates from the dummy player (which is synced up to play
-        // in correspondence with spotify) to produce a progress bar which the spotify player can use
+        // We will use timeupdates from the dummy spotifyPlayer (which is synced up to play
+        // in correspondence with spotify) to produce a progress bar which the spotify spotifyPlayer can use
         {
-            updateProgressIndicator(STATE);
+            Functions.updateProgressIndicator(STATE);
         });
 
         //****** Local Player **********/        
-        setLocalPlaylistOptions();
-        setLocalVolume(null,CONFIG.defaultPercent);
+        LocalFunctions.setLocalVolume(null,CONFIG.defaultPercent);
         
         (async ()=>
         {
-            await updatePlaylistCount(STATE, LOCAL_SOURCE);
-            addPlaylistTracksToUI(STATE, HISTORY, LOCAL_SOURCE, player);
+            await LocalFunctions.setLocalPlaylistOptions();
+            await Functions.updatePlaylistCount(STATE, LOCAL_SOURCE);
+            Functions.addPlaylistTracksToUI(STATE, HISTORY, LOCAL_SOURCE, spotifyPlayer);
         })();
 
         // Event listener for changes to the playlist <select> element
         document.querySelector("#localPlaylist").addEventListener('change', async () => 
         { 
             // Set the global track counter
-            await updatePlaylistCount(STATE, LOCAL_SOURCE);
+            await Functions.updatePlaylistCount(STATE, LOCAL_SOURCE);
             
-            if ( getCurrentPlaylist(LOCAL_SOURCE) != CONFIG.noContextOption )
+            if ( Functions.getCurrentPlaylist(LOCAL_SOURCE) != CONFIG.noContextOption )
             {
                 while ( STATE.historyPos != 0 )
                 // Remove any 'future' items in the HISTORY to guarantee a new track
@@ -124,23 +130,23 @@ window.onSpotifyWebPlaybackSDKReady = () =>
                     STATE.historyPos--;
                 }
 
-                playNextTrack(STATE, HISTORY, player, newPlaylist=LOCAL_SOURCE);
+               Functions.playNextTrack(STATE, HISTORY, spotifyPlayer, newPlaylist=LOCAL_SOURCE);
             }
             
             // Add tracks to the UI
-            addPlaylistTracksToUI(STATE, HISTORY, LOCAL_SOURCE, player);
+            Functions.addPlaylistTracksToUI(STATE, HISTORY, LOCAL_SOURCE, spotifyPlayer);
         });
 
         document.querySelector("#localPlayer").addEventListener('ended', () => 
         // Event listener for when a track ends
         {
-            playNextTrack(STATE, HISTORY, player);
+            Functions.playNextTrack(STATE, HISTORY, spotifyPlayer);
         });
 
         document.querySelector("#localPlayer").addEventListener('timeupdate', () => 
         // Event listener to contiously update progress indicator
         { 
-            updateProgressIndicator(STATE);
+            Functions.updateProgressIndicator(STATE);
         });
     };
 }
