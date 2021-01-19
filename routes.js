@@ -4,6 +4,14 @@
 // Note that requiring() the same package several times won't cause any overhead (cached)
 const queryString = require('querystring');
 
+// fastify.request:
+// [
+//     'id',      'params',
+//     'raw',     'query',
+//     'log',     'body',
+//     'cookies'
+// ]
+
 module.exports = (fastify,functions,CONFIG) => 
 {
     // Declare a handler for the favicon fetch
@@ -143,11 +151,13 @@ module.exports = (fastify,functions,CONFIG) =>
     fastify.get('/home', (req, res) => 
     {
         // Redirect to /setstate if the client was not redirected to /home via OAuth
-        if ( req.query.redirect == null )
+        if ( req.cookies.redirect == null )
         { 
             console.log("======== Redirecting to /setstate ========="); 
             res.redirect('/setstate'); 
         }
+        
+        delete req.cookies.redirect;
 
         // Use the URL parameters passed from STEP 2 
         // for access_token, refresh_token and expires_in on the client side
@@ -209,6 +219,13 @@ module.exports = (fastify,functions,CONFIG) =>
     })
     
     //******* LOCAL FILES ********/
+    fastify.get('/local', (req, res) => 
+    {
+        res.view('/templates/index.ejs', { route: '/local', CONFIG: CONFIG } );
+    })
+
+
+
     fastify.get('/playlists', async (req, res) =>
     {
         // To play media from local playslists (interspersed with Spotify and/or seperatly) 

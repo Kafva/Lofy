@@ -1,5 +1,7 @@
-import { DEBUG, CONFIG } from './clientConfig.js'
-import * as Functions    from './clientFunctions.js'
+import { DEBUG, CONFIG }     from './clientConfig.js';
+import * as Functions        from './stateFunctions.js';
+import * as Util             from './util.js';
+
 
 const keyboardHandler = (STATE, HISTORY, spotifyPlayer, event) => 
 {
@@ -31,13 +33,13 @@ const keyboardHandler = (STATE, HISTORY, spotifyPlayer, event) =>
         switch(event.key)
         {
             case CONFIG.debugInfo:
-                Functions.getDebug(STATE,HISTORY);
+                console.log("DEBUG:",STATE,HISTORY);
                 break;
             case CONFIG.volumeUp:
-                Functions.setVolume(STATE.currentSource, CONFIG.volumeStep);
+                Util.setVolume(STATE.currentSource, CONFIG.volumeStep);
                 break;
             case CONFIG.volumeDown:
-                Functions.setVolume(STATE.currentSource,-CONFIG.volumeStep);
+                Util.setVolume(STATE.currentSource,-CONFIG.volumeStep);
                 break;
             case CONFIG.next:
                 Functions.playNextTrack(STATE, HISTORY, spotifyPlayer);
@@ -46,10 +48,10 @@ const keyboardHandler = (STATE, HISTORY, spotifyPlayer, event) =>
                 Functions.playPrevTrack(STATE, HISTORY, spotifyPlayer);
                 break;
             case CONFIG.seekForward:
-                Functions.seekPlayback(STATE.currentSource, 1);
+                Util.seekPlayback(STATE.currentSource, 1);
                 break;
             case CONFIG.seekBack:
-                Functions.seekPlayback(STATE.currentSource, -1);
+                Util.seekPlayback(STATE.currentSource, -1);
                 break;
             case CONFIG.scrollBottom:
                 window.scrollTo(0,document.querySelector("#trackList").scrollHeight);
@@ -74,12 +76,12 @@ const mediaHandlers = (STATE, HISTORY, spotifyPlayer) =>
         navigator.mediaSession.setActionHandler(CONFIG.dummyPlay, () => 
         { 
             if(DEBUG) console.log(`----PLAY---- (${navigator.mediaSession.playbackState})`); 
-            Functions.mediaPlay(STATE.currentSource);
+            Util.mediaPlay(STATE.currentSource);
         });
         navigator.mediaSession.setActionHandler(CONFIG.dummyPause, () => 
         { 
             if(DEBUG) console.log(`----PAUSE---- (${navigator.mediaSession.playbackState})`); 
-            Functions.mediaPause(STATE.currentSource);
+            Util.mediaPause(STATE.currentSource);
         });
         navigator.mediaSession.setActionHandler('previoustrack', () => 
         { 
@@ -99,22 +101,22 @@ const clickHandler = (STATE, HISTORY, spotifyPlayer) =>
     switch (event.target.id)
     {
         case 'playlistToggle':
-            Functions.modifyVisibility("#trackList");
+            Util.modifyVisibility("#trackList");
             break;
         case 'coverToggle':
-            Functions.modifyVisibility("#cover", CONFIG.coverOpacity, true);
+            Util.modifyVisibility("#cover", CONFIG.coverOpacity, true, true);
             break;
         case 'shuffleToggle':
-            Functions.toggleShuffle(STATE);
+            Util.toggleShuffle(STATE);
             break;
         case 'pauseToggle':
             Functions.pauseToggle(STATE, HISTORY, spotifyPlayer);    
             break;
         case 'volumeUp':
-            Functions.setVolume(STATE.currentSource, CONFIG.volumeStep);
+            Util.setVolume(STATE.currentSource, CONFIG.volumeStep);
             break;
         case 'volumeDown':
-            Functions.setVolume(STATE.currentSource, -CONFIG.volumeStep);
+            Util.setVolume(STATE.currentSource, -CONFIG.volumeStep);
             break;
         case 'previous':
             Functions.playPrevTrack(STATE, HISTORY, spotifyPlayer);
@@ -123,10 +125,10 @@ const clickHandler = (STATE, HISTORY, spotifyPlayer) =>
             Functions.playNextTrack(STATE, HISTORY, spotifyPlayer);
             break;
         case 'seekForward':
-            Functions.seekPlayback(STATE.currentSource, 1);
+            Util.seekPlayback(STATE.currentSource, 1);
             break;
         case 'seekBack':
-            Functions.seekPlayback(STATE.currentSource, -1);
+            Util.seekPlayback(STATE.currentSource, -1);
             break;
     }
 }

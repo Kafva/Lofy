@@ -4,8 +4,8 @@ const LOCAL_SOURCE   = 'local';
 
 const CONFIG = Object.freeze({
     //** Default config **/
-    defaultLocalPlaylist: 'Justin Bieber',
-    defaultSpotifyPlaylist: '-',
+    defaultLocalPlaylist: 'Df',
+    defaultSpotifyPlaylist: '✨',
     
     historyLimit: 50,
     volumeStep: 5,

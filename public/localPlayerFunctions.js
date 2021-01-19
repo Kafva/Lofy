@@ -81,10 +81,10 @@ const setLocalVolume = (diff, newPercent=null) =>
 }
 
 export { 
-    //client.js + clientFunctions.js
+    // client.js + stateFunctions.js
     setLocalVolume,
     
-    // clientFunctions.js
+    // stateFunctions.js
     getLocalPlaylistJSON,
     
     // client.js

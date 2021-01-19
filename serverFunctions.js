@@ -148,9 +148,11 @@ module.exports = (CONFIG) =>
                         setCookie(res,'refresh_token', params.refresh_token);
                         setCookie(res,'expires_in', params.expires_in.toString() );
                         
-                        // The ?redirect paramater is used to notify the server that the client
+                        // The redirect key is used to notify the server that the client
                         // has passed the OAuth process
-                        res.redirect('/home?redirect=true');
+                        setCookie(res,'redirect', 'true');
+
+                        res.redirect('/home');
                     }
                 }
                 else { errorRedirect(res, `Missing component(s) of response: ${params}`, textOnly); }

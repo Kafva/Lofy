@@ -9,7 +9,7 @@
     </head>
 
     <body>
-        <% if (route == "/home") 
+        <% if (route == "/home" || route == '/local') 
         { %>
             <div tabIndex="-1" id="bar">
                 <div tabIndex="-1" id="playlistToggle" class="floatLeft clickable nf nf-mdi-menu"></div>
@@ -54,19 +54,23 @@
             </div>
             <img id="cover">
 
-
+        <% } 
+        if ( route == '/home' )
+        {
+        %>
             <!-- Dummy audio spotifyPlayer -->
             <audio id="dummy" controls loop src="resc/silence.m4a"></audio> 
             
-            <!-- Local file spotifyPlayer -->
-            <audio id="localPlayer" controls preload></audio> 
-
             <!-- Spotify iframe injection script -->
             <script src="https://sdk.scdn.co/spotify-player.js"></script>
-
-            <!-- Main script -->
-            <script type="module" src="client.js"></script>
+        <%
+        } 
+        %>    
             
-        <% } %>
+        <!-- Local file spotifyPlayer -->
+        <audio id="localPlayer" controls preload></audio> 
+
+        <!-- Main script -->
+        <script type="module" src="client.js"></script>
     </body>
 </html>

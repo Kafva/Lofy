@@ -19,7 +19,7 @@ const refreshToken = async (spotifyPlayer) =>
         {
             res = JSON.parse(xhr.response) 
         }
-        catch(e){ console.error("Non-parsable response", xhr.response); }
+        catch(e){ console.error("Non-parsable response", xhr.response); return; }
 
         // Replace the Cookie values for access_token and expires_in
         document.cookie = `access_token=${res.access_token}`;
@@ -149,7 +149,6 @@ const getPlaylistJSON = async (name) =>
     });
     
     let playlists = null;
-    
     try 
     { 
         let body = await res.text();
@@ -215,6 +214,7 @@ const getPlayerJSON = async () =>
         body = JSON.parse(body)
     }
     catch(e){ throw(e); }
+    if(body == null){ throw("Empty response from /player"); }
 
     return body;
 }
@@ -286,10 +286,10 @@ export {
     // client.js
     refreshToken, 
     
-    // clientFunctions.js
+    // stateFunctions.js
     InitSpotifyPlayer, setSpotifyVolume, seekSpotifyPlayback,
     getDeviceJSON, getPlayerJSON, getPlaylistJSON, getCurrentSpotifyTrack,
 
-    // client.js + clientFunctions.js
+    // client.js + stateFunctions.js
     getCookiesAsJSON,
 };

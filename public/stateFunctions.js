@@ -1,6 +1,12 @@
+// Top level dispatch functions from client.js
+// Changes to STATE.currentSource are done in:
+//      * playSpotifyTrack()
+//      * playLocalTrack()
+
 import { DEBUG, SPOTIFY_SOURCE, LOCAL_SOURCE, CONFIG } from './clientConfig.js';
-import * as LocalFunctions from './localPlayerFunctions.js';
+import * as LocalFunctions   from './localPlayerFunctions.js';
 import * as SpotifyFunctions from './spotifyFunctions.js';
+import * as Util             from './util.js';
 
 const setupMediaMetadata = async (STATE, HISTORY) =>
 // Setup metadata for mediaSession
@@ -9,7 +15,7 @@ const setupMediaMetadata = async (STATE, HISTORY) =>
     {
         case SPOTIFY_SOURCE:
             let _json = null;
-            try{ await SpotifyFunctions.getPlayerJSON(); }
+            try { _json = await SpotifyFunctions.getPlayerJSON(); }
             catch (e) { console.error(e); return; }
 
             let artwork = [];
@@ -38,7 +44,7 @@ const setupMediaMetadata = async (STATE, HISTORY) =>
             if (track != null)
             {
                 let _playlist = null;
-                try { _playlist = getPlaylistOfCurrentTrack(HISTORY,STATE.historyPos); }
+                try { _playlist = Util.getPlaylistOfCurrentTrack(HISTORY,STATE.historyPos); }
                 catch (e) { console.error(e); return; }
 
                 navigator.mediaSession.metadata = new MediaMetadata({
@@ -61,21 +67,7 @@ const setupMediaMetadata = async (STATE, HISTORY) =>
     }
 }
 
-//******** AUDIO SOURCE MANAGMENT *********/
-
-const setVolume = (source, diff, newPercent=null) =>
-{
-    switch(source)
-    {
-        case SPOTIFY_SOURCE:
-            try { SpotifyFunctions.setSpotifyVolume(diff, newPercent); }
-            catch (e) { console.error(e); }
-            break;
-        case LOCAL_SOURCE:
-            LocalFunctions.setLocalVolume(diff,newPercent);
-            break;
-    }
-}
+//******** AUDIO SOURCE MANAGMENT **********//
 
 const playNextTrack = async (STATE, HISTORY, spotifyPlayer, newPlaylist=false) =>
 {
@@ -92,15 +84,15 @@ const playNextTrack = async (STATE, HISTORY, spotifyPlayer, newPlaylist=false) =
     if ( STATE.historyPos == 0 )
     // If we are at (historyPos:0) play a new track
     {
-        if(STATE.shuffle){ entry.source = audioSourceCoinflip(STATE.currentPlaylistCount); }
+        if(STATE.shuffle){ entry.source = Util.audioSourceCoinflip(STATE.currentPlaylistCount); }
         else 
         // If shuffle is not active
         {
-            setSourceAndTrackNumForNonShuffle(STATE, HISTORY, entry, newPlaylist);
+            Util.setSourceAndTrackNumForNonShuffle(STATE, HISTORY, entry, newPlaylist);
         }
        
         let currentPlaylist = null;
-        try { currentPlaylist = getCurrentPlaylist(entry.source); }
+        try { currentPlaylist = Util.getCurrentPlaylist(entry.source); }
         catch (e) { console.error(e); return; }
         
         entry.playlistName = currentPlaylist;
@@ -109,7 +101,7 @@ const playNextTrack = async (STATE, HISTORY, spotifyPlayer, newPlaylist=false) =
     {
         entry.playlistName = HISTORY.arr[ STATE.historyPos - 1 ].playlist;
         entry.source = HISTORY.arr[ STATE.historyPos - 1 ].spotifyURI ? SPOTIFY_SOURCE : LOCAL_SOURCE;
-        entry.trackNum = (getTrackHistoryJSON(HISTORY, STATE.historyPos - 1 )).trackNum;
+        entry.trackNum = (Util.getTrackHistoryJSON(HISTORY, STATE.historyPos - 1 )).trackNum;
 
         // Don't add a track to the HISTORY when catching up in the HISTORY
         addToHistory = false;
@@ -131,7 +123,7 @@ const playPrevTrack = async (STATE, HISTORY, spotifyPlayer) =>
     // Current track ==> (index : historyPos)
     if ( STATE.historyPos + 1 < HISTORY.arr.length )
     {
-        let prevTrack = getTrackHistoryJSON(HISTORY, ++STATE.historyPos );
+        let prevTrack = Util.getTrackHistoryJSON(HISTORY, ++STATE.historyPos );
         
         if (prevTrack.spotifyURI != null)
         // Play previous track from spotify
@@ -184,11 +176,11 @@ const playTrackFromIndex = (STATE, HISTORY, source, spotifyPlayer, playlistName,
         case LOCAL_SOURCE:
             // Pause Spotify and start playing from the local source
             let currentPlaylist = null;
-            try { currentPlaylist = getCurrentPlaylist(SPOTIFY_SOURCE); }
+            try { currentPlaylist = Util.getCurrentPlaylist(SPOTIFY_SOURCE); }
             catch (e) { console.error(e); return; }
 
             toggleSpotifyPlayback(STATE, HISTORY, currentPlaylist, spotifyPlayer, true );
-            playNextLocalTrack(STATE, HISTORY, playlistName, trackNum, addToHistory);
+            playLocalTrack(STATE, HISTORY, playlistName, trackNum, addToHistory);
                 break; 
     }
 }
@@ -199,9 +191,8 @@ const pauseToggle = (STATE, HISTORY, spotifyPlayer) =>
     {
         case SPOTIFY_SOURCE:
             let _playlist = null;
-            try { _playlist = getPlaylistOfCurrentTrack(HISTORY,STATE.historyPos); }
+            try { _playlist = Util.getPlaylistOfCurrentTrack(HISTORY,STATE.historyPos); }
             catch (e) { console.error(e); return; }
-
             toggleSpotifyPlayback(STATE, HISTORY, _playlist, spotifyPlayer);
             break;
         case LOCAL_SOURCE:
@@ -213,28 +204,7 @@ const pauseToggle = (STATE, HISTORY, spotifyPlayer) =>
     }
 }
 
-const seekPlayback = (source, direction) =>
-{
-    let p = null;
-
-    switch(source)
-    {
-        case SPOTIFY_SOURCE:
-            SpotifyFunctions.seekSpotifyPlayback( direction * CONFIG.seekStepMs);
-            p = document.querySelector("#dummy");
-            break;
-        case LOCAL_SOURCE:
-            p = document.querySelector("#localPlayer");
-            break;
-    }
-
-    if(DEBUG) console.log( `Seek [start(),end()] = [${p.seekable.start(p.seekable.length - 1)},${p.seekable.end(p.seekable.length - 1)}] (sec)` );
-    
-    p.currentTime = p.currentTime + ( direction * (CONFIG.seekStepMs/1000) );
-
-}
-
-//********* Spotify **********/
+//********* Spotify ***********//
 
 const addPlayerListeners = (STATE, HISTORY, spotifyPlayer) =>
 {
@@ -261,11 +231,18 @@ const addPlayerListeners = (STATE, HISTORY, spotifyPlayer) =>
         {
             await SpotifyFunctions.InitSpotifyPlayer(spotifyPlayer);
 
-            // Add the tracks from the playlist to the UI
-            addPlaylistTracksToUI(STATE, HISTORY, SPOTIFY_SOURCE, spotifyPlayer);
-
+            let currentPlaylist = null;
+            try { currentPlaylist = Util.getCurrentPlaylist(SPOTIFY_SOURCE); }
+            catch(e) { console.error(e); return; }
+            
+            if ( currentPlaylist != CONFIG.noContextOption )
+            {
+                // Add the tracks from the playlist to the UI (if a playlist selected)
+                addPlaylistTracksToUI(STATE, HISTORY, SPOTIFY_SOURCE, spotifyPlayer);
+            }
+            
             // Update the playlist track counter
-            updatePlaylistCount(STATE, SPOTIFY_SOURCE);
+            Util.updatePlaylistCount(STATE, SPOTIFY_SOURCE, currentPlaylist);
         })();
     });
 
@@ -305,7 +282,7 @@ const handleSpotifyTrackEnd = async (STATE, HISTORY, spotifyPlayer) =>
 
 const toggleSpotifyPlayback = async (STATE, HISTORY, playlistName, spotifyPlayer, pauseOnly=false) => 
 {
-    //*** NOTE that one cannot directly ['index'] the return value from an async function */
+    //*** NOTE that one cannot directly ['index'] the return value from an async function **//
     let _json = null;
     try  { _json = await SpotifyFunctions.getDeviceJSON(); }
     catch (e) { console.error(e); return; }
@@ -321,16 +298,16 @@ const toggleSpotifyPlayback = async (STATE, HISTORY, playlistName, spotifyPlayer
     else
     {
         let _json = null;
-        try{ await SpotifyFunctions.getPlayerJSON(); }
+        try { _json = await SpotifyFunctions.getPlayerJSON(); }
         catch (e) { console.error(e); return; }
-
+        
         if (_json['is_playing'])
         {
             await fetch(`https://api.spotify.com/v1/me/player/pause`, {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${SpotifyFunctions.getCookiesAsJSON().access_token}` },
             });
-            updateDummyPlayerStatus(STATE.currentSource, CONFIG.dummyPause);
+            Util.updateDummyPlayerStatus(STATE.currentSource, CONFIG.dummyPause);
         }
         else
         {
@@ -340,7 +317,7 @@ const toggleSpotifyPlayback = async (STATE, HISTORY, playlistName, spotifyPlayer
                     method: 'PUT',
                     headers: { 'Authorization': `Bearer ${SpotifyFunctions.getCookiesAsJSON().access_token}` },
                 });
-                updateDummyPlayerStatus(STATE.currentSource, CONFIG.dummyPlay);
+                Util.updateDummyPlayerStatus(STATE.currentSource, CONFIG.dummyPlay);
             }
         }
     }
@@ -353,15 +330,15 @@ const playSpotifyTrack = async (STATE, HISTORY, playlistName, spotifyPlayer, tra
     STATE.currentSource = SPOTIFY_SOURCE;
 
     let track = null;
-    let tracks_json   = await getTracksJSON(STATE, playlistName);
+    let tracks_json   = await getSpotifyTracksJSON(STATE, playlistName);
     if (tracks_json == null){ console.error(`Failed to fetch tracks for ${playlistName}`); return null; }
 
     
     if ( trackNum == null )
-    /* (historyPos:0) ==> Play a new track */
+    /* (historyPos:0) ==> Play a new track **/
     {
         // NOTE that we decrement the trackNum to get the array index in tracks_json
-        trackNum = getNewTrackNumber(HISTORY, STATE.currentSource, STATE.currentPlaylistCount.spotify );
+        trackNum = Util.getNewTrackNumber(HISTORY, STATE.currentSource, STATE.currentPlaylistCount.spotify );
    
         // If we are playing a new track we should add it to the HISTORY
         // but we should also add explicitly played tracks to the HISTORY         
@@ -370,9 +347,9 @@ const playSpotifyTrack = async (STATE, HISTORY, playlistName, spotifyPlayer, tra
     if(DEBUG) console.log(`Playing new track=${trackNum} tracks_json[${trackNum}] (addToHistory=${addToHistory}):`, tracks_json);
 
     // NOTE that we add the trackNum++ to the HISTORY since it is 
-    if (addToHistory){ addTrackToHistory(HISTORY, SPOTIFY_SOURCE, trackNum, tracks_json[trackNum].track.uri); }
+    if (addToHistory){ Util.addTrackToHistory(HISTORY, SPOTIFY_SOURCE, trackNum, tracks_json[trackNum].track.uri); }
 
-    /* (historyPos >= 1) ==> Play next track in HISTORY */
+    /* (historyPos >= 1) ==> Play next track in HISTORY **/
     // The next track is guaranteed to be a Spotify track from the base selection in `playPrevTrack()`
     // and is passed as an argument
     
@@ -396,8 +373,10 @@ const playSpotifyTrack = async (STATE, HISTORY, playlistName, spotifyPlayer, tra
     updateCurrentTrackUI(HISTORY, STATE.historyPos, STATE.currentSource);
 
     // Start the dummy spotifyPlayer and set a value for the dummyProgressOffset
-    updateDummyPlayerStatus(STATE.currentSource, CONFIG.dummyPlay);
-    setDummyProgressOffset(STATE);
+    Util.updateDummyPlayerStatus(STATE.currentSource, CONFIG.dummyPlay);
+
+    // Update the dummyProgress offset
+    STATE.dummyProgressOffsetSec = document.querySelector("#dummy").currentTime; 
 
     // Set a value for the duration on the progress bar
     let sec = Math.floor(( track.duration_ms /1000)%60);
@@ -416,21 +395,21 @@ const playSpotifyTrack = async (STATE, HISTORY, playlistName, spotifyPlayer, tra
     setupMediaMetadata(STATE, HISTORY);
 }
 
-const getTracksJSON = async (STATE, playlistName) =>
+const getSpotifyTracksJSON = async (STATE, playlistName) =>
 {
     let playlist_json = null;
     try { playlist_json = await SpotifyFunctions.getPlaylistJSON(playlistName); }
     catch (e) { console.error(e); return; }
 
     let currentPlaylist = null;
-    try { currentPlaylist = getCurrentPlaylist(SPOTIFY_SOURCE); }
+    try { currentPlaylist = Util.getCurrentPlaylist(SPOTIFY_SOURCE); }
     catch (e) { console.error(e); return; }
     
     // The API only allows for 100 tracks to be returned per request, we must therefore issue several fetches
     // to aquire all the tracks of a playlist
     if ( STATE.currentPlaylistCount.spotify == null && currentPlaylist == playlistName )
     { 
-        updatePlaylistCount(STATE, SPOTIFY_SOURCE); 
+        Util.updatePlaylistCount(STATE, SPOTIFY_SOURCE, currentPlaylist); 
     }
     let tracks = [];
     
@@ -452,9 +431,9 @@ const getTracksJSON = async (STATE, playlistName) =>
     return tracks;
 }
 
-//********** Local player *********/
+//********** Local player **********//
 
-const playNextLocalTrack = (STATE, HISTORY, playlistName, trackNum=null, addToHistory=true) => 
+const playLocalTrack = async (STATE, HISTORY, playlistName, trackNum=null, addToHistory=true) => 
 {
     STATE.currentSource = LOCAL_SOURCE; 
    
@@ -462,19 +441,14 @@ const playNextLocalTrack = (STATE, HISTORY, playlistName, trackNum=null, addToHi
     // if all tracks have been played, clear the history
 
     if (trackNum == null)
-    /* (historyPos:0) ==> Play a new track (and add it to the HISTORY) */
+    /* (historyPos:0) ==> Play a new track (and add it to the HISTORY) **/
     {
-        trackNum = getNewTrackNumber(HISTORY, STATE.currentSource, STATE.currentPlaylistCount.local );
+        trackNum = Util.getNewTrackNumber(HISTORY, STATE.currentSource, STATE.currentPlaylistCount.local );
     }
 
-    if(addToHistory){ addTrackToHistory(HISTORY, LOCAL_SOURCE, trackNum); }
+    if(addToHistory){ Util.addTrackToHistory(HISTORY, LOCAL_SOURCE, trackNum); }
 
-    // Play the given track
-    playLocalTrack(STATE, HISTORY, playlistName, trackNum);
-}
-
-const playLocalTrack = async (STATE, HISTORY, playlistName, trackNum) =>
-{
+    // Set the source of the audio object
     document.querySelector("#localPlayer").src = `/audio/${escape(playlistName)}/${trackNum}`
     let p = document.querySelector("#localPlayer");
     await p.load();
@@ -491,12 +465,12 @@ const playLocalTrack = async (STATE, HISTORY, playlistName, trackNum) =>
         sec: sec,
         min: Math.floor(document.querySelector("#localPlayer").duration / 60)
     }
-
-    updateDummyPlayerStatus(STATE.currentSource, CONFIG.dummyPlay);
-    await updateCurrentTrackUI(HISTORY, STATE.historyPos, STATE.currentSource);
-
+    
     // Update volume indicator
     LocalFunctions.setLocalVolume(0);
+
+    Util.updateDummyPlayerStatus(STATE.currentSource, CONFIG.dummyPlay);
+    await updateCurrentTrackUI(HISTORY, STATE.historyPos, STATE.currentSource);
 
     setupMediaMetadata(STATE, HISTORY);
 }
@@ -504,8 +478,8 @@ const playLocalTrack = async (STATE, HISTORY, playlistName, trackNum) =>
 const toggleLocalPlayback = () =>
 {
     let p = document.querySelector("#localPlayer");
-    if (p.paused) { p.play();  updateDummyPlayerStatus(LOCAL_SOURCE, CONFIG.dummyPlay);  }
-    else          { p.pause(); updateDummyPlayerStatus(LOCAL_SOURCE, CONFIG.dummyPause); }
+    if (p.paused) { p.play();  Util.updateDummyPlayerStatus(LOCAL_SOURCE, CONFIG.dummyPlay);  }
+    else          { p.pause(); Util.updateDummyPlayerStatus(LOCAL_SOURCE, CONFIG.dummyPause); }
 }
 
 const getCurrentLocalTrack = async (HISTORY, historyPos) =>
@@ -514,12 +488,11 @@ const getCurrentLocalTrack = async (HISTORY, historyPos) =>
     try 
     {
         playlist = await LocalFunctions.
-            getLocalPlaylistJSON(getPlaylistOfCurrentTrack(HISTORY, historyPos));
+            getLocalPlaylistJSON(Util.getPlaylistOfCurrentTrack(HISTORY, historyPos));
     }
     catch (e) { console.error(e); return null; }
 
-
-    let trackNum = getTrackHistoryJSON(HISTORY, historyPos).trackNum;
+    let trackNum = Util.getTrackHistoryJSON(HISTORY, historyPos).trackNum;
     try
     {
         return playlist.tracks[trackNum];
@@ -527,79 +500,7 @@ const getCurrentLocalTrack = async (HISTORY, historyPos) =>
     catch (e) { console.error(e); return null; }
 }
 
-const updateLocalPlaylistCount = async (STATE) =>
-{
-    let playlist = null;
-    try 
-    { 
-        playlist = await LocalFunctions
-            .getLocalPlaylistJSON(getCurrentPlaylist(LOCAL_SOURCE));
-    }
-    catch (e) { console.error(e); return; }
-    
-    STATE.currentPlaylistCount.local = playlist.tracks.length; 
-}
-
-//********* Media keys *******/
-
-const mediaPlay = async (source) =>
-{
-    switch(source)
-    {
-        case SPOTIFY_SOURCE:
-            // Wait a bit for the spotify spotifyPlayer state to update (via the reaction from the iframe) 
-            // before checking it
-            await new Promise(r => setTimeout(r, CONFIG.newTrackDelay));
-            
-            let _json = null;
-            try { _json = await SpotifyFunctions.getPlayerJSON(); }
-            catch (e) { console.error(e); return; }
-
-            if ( _json['is_playing'] === false )
-            // If the spotify spotifyPlayer is not playing, start it
-            {
-                await fetch(`https://api.spotify.com/v1/me/player/play`, {
-                    method: 'PUT',
-                    headers: { 'Authorization': `Bearer ${SpotifyFunctions.getCookiesAsJSON().access_token}` },
-                });
-            }
-            updateDummyPlayerStatus(SPOTIFY_SOURCE, CONFIG.dummyPlay);
-            break;
-        case LOCAL_SOURCE:
-            toggleLocalPlayback(LOCAL_SOURCE);
-            break;
-    }
-}
-
-const mediaPause = async (source) =>
-{
-    switch(source)
-    {
-        case SPOTIFY_SOURCE:
-            // Wait a bit for the spotify spotifyPlayer state to update before checking it
-            await new Promise(r => setTimeout(r, CONFIG.newTrackDelay));
-
-            let _json = null;
-            try { _json = await SpotifyFunctions.getPlayerJSON(); }
-            catch (e) { console.error(e); return; }
-
-            if ( _json['is_playing'] === true )
-            // If the spotify spotifyPlayer is playing, pause it
-            {
-                await fetch(`https://api.spotify.com/v1/me/player/pause`, {
-                    method: 'PUT',
-                    headers: { 'Authorization': `Bearer ${SpotifyFunctions.getCookiesAsJSON().access_token}` },
-                });
-            }
-            updateDummyPlayerStatus(SPOTIFY_SOURCE, CONFIG.dummyPause);
-            break;
-        case LOCAL_SOURCE:
-            toggleLocalPlayback();
-            break;
-    }
-}
-
-//********* UI **************//
+//****** Current track UI ****************//
 
 const updateProgressIndicator = (STATE) =>
 {
@@ -610,7 +511,7 @@ const updateProgressIndicator = (STATE) =>
     switch(STATE.currentSource)
     {
         case SPOTIFY_SOURCE:
-            if ( STATE.dummyProgressOffsetSec == -1) { throw(`dummyProgressOffset unset: Can't show track progress`); } 
+            if ( STATE.dummyProgressOffsetSec == -1) { throw(`dummyProgressOffset unset: Can't show track progress (${STATE.currentSource})`); } 
 
             // Javascript modulo does not convert negative numbers into positive values i.e.
             //  -40 % 60 ==> -40
@@ -618,7 +519,6 @@ const updateProgressIndicator = (STATE) =>
             sec = Math.floor( ( ( (p.currentTime - STATE.dummyProgressOffsetSec) % 60 ) + 60 ) % 60 );
             min = Math.floor(     (p.currentTime - STATE.dummyProgressOffsetSec) / 60 );
             
-            //if ( sec < 0 || min < 0 ){ min = 'err'; sec = 'err'; }
             if (sec <= 9){ sec = `0${sec}`; }
             break;
         case LOCAL_SOURCE:
@@ -626,7 +526,6 @@ const updateProgressIndicator = (STATE) =>
             sec = Math.floor(p.currentTime % 60);
             min = Math.floor(p.currentTime / 60);
 
-            //if ( sec < 0 || min < 0 ){ min = 'err'; sec = 'err'; }
             if (sec <= 9){ sec = `0${sec}`; }
             break;
     }
@@ -666,7 +565,8 @@ const updateCurrentTrackUI = async (HISTORY, historyPos, source) =>
                 artist      = track.artist || CONFIG.unknown;
             break;
     }
-    
+   
+    console.log( track, historyPos, source );
     let rows = document.querySelectorAll("#trackList > tbody > tr");
     if (rows != [] && rows != null)
     {
@@ -693,8 +593,10 @@ const updateCurrentTrackUI = async (HISTORY, historyPos, source) =>
     document.querySelector("#currentSource").setAttribute("class", CONFIG.iconCSS[source] ); 
 }
 
+//********* Playlist UI **************//
+
 const addPlaylistTracksToUI = async (STATE, HISTORY, source, spotifyPlayer) =>
-// Run 'onchange' for <select> and in Init()
+// Run 'onchange' for <select> and in 'ready' listener
 {
     let entry = {};
     let sec = null;
@@ -713,14 +615,14 @@ const addPlaylistTracksToUI = async (STATE, HISTORY, source, spotifyPlayer) =>
     }
 
     let currentPlaylist = null;
-    try { currentPlaylist = getCurrentPlaylist(source); }
+    try { currentPlaylist = Util.getCurrentPlaylist(source); }
     catch (e) { console.error(e); return; }
 
     let index = 0;
     switch(source)
     {
         case SPOTIFY_SOURCE:
-            for (let _json of ((await getTracksJSON(STATE, currentPlaylist)) || []) )
+            for (let _json of ((await getSpotifyTracksJSON(STATE, currentPlaylist)) || []) )
             {
                 sec = _json.track.duration_ms != null ? Math.floor(_json.track.duration_ms/1000) : 0;
                 
@@ -753,243 +655,6 @@ const addPlaylistTracksToUI = async (STATE, HISTORY, source, spotifyPlayer) =>
     }
 }
 
-const togglePauseTrackUI = (mode) =>
-{
-    let rows = document.querySelectorAll("#trackList > tbody > tr");
-    
-    if (rows != [] && rows != null)
-    {
-        switch(mode)
-        {
-            case CONFIG.dummyPause:
-                // Change the track with the currentTrackCSS to have a play icon when pausing playback
-                    for (let row of rows)
-                    { 
-                        if ( row.querySelectorAll("td")[0].className.match( CONFIG.currentTrackCSS ) )
-                        {
-                            if(DEBUG) console.log("Adding playIcon!", row);
-                            let _className  = row.querySelectorAll("td")[0].className
-                            
-                            _className      = _className.replace(CONFIG.currentTrackCSS, CONFIG.playClass);
-                            
-                            row.querySelectorAll("td")[0].className = _className;
-                        }
-                    }
-                break;
-            case CONFIG.dummyPlay:
-                // Replace the playIcon with the currentTrackCSS when resuming playback
-                for (let row of rows)
-                { 
-                    if ( row.querySelectorAll("td")[0].className.match( CONFIG.playClass ) )
-                    {
-                        if (DEBUG) console.log("Removing playIcon!", row);
-                        let _className  = row.querySelectorAll("td")[0].className
-                        _className      = _className.replace(CONFIG.playClass , CONFIG.currentTrackCSS);
-                        row.querySelectorAll("td")[0].className = _className;
-                    }
-                }
-                break;
-        }
-    }
-}
-
-const modifyVisibility = async (selector, visibleOpacity=1, checkSrc=false) =>
-{
-    if ( getComputedStyle(document.querySelector(selector)).opacity == 0 )
-    // Make visible
-    {
-        // Move the item into the flexbox
-        let el =  document.querySelector(selector);
-        document.querySelector("#container").append(el);
-        
-        if(checkSrc)
-        {
-            if ( document.querySelector(selector).src != "" )
-            {
-                document.querySelector(selector).style.visibility = 'visible'; 
-                document.querySelector(selector).style.opacity = visibleOpacity; 
-            }  
-        }
-        else 
-        { 
-            document.querySelector(selector).style.visibility = 'visible'; 
-            document.querySelector(selector).style.opacity = visibleOpacity; 
-        }
-    }
-    else
-    // Make invisible
-    {
-        // We haft to wait before setting the visibility for the animation to complete
-        document.querySelector(selector).style.opacity = 0; 
-        await new Promise(r => setTimeout(r, 500));
-        document.querySelector(selector).style.visibility = 'hidden'; 
-
-
-        // Move the item out of the flexbox
-        let el =  document.querySelector(selector);
-        document.body.append(el);
-    }
-}
-
-//***** DUMMY PLAYER *******//
-
-const updateDummyPlayerStatus = (source, mode) =>
-// Start/Stop the dummy spotifyPlayer and update the UI, if the source is NOT spotify
-// we only update the UI
-{
-    togglePauseTrackUI(mode);
-    
-    switch(mode)
-    {
-        case CONFIG.dummyPause:
-            if( source == SPOTIFY_SOURCE ){ document.querySelector("#dummy").pause(); }
-            document.querySelector("#pauseToggle").setAttribute("class", CONFIG.playClass);
-            break;
-        case CONFIG.dummyPlay:
-            if( source == SPOTIFY_SOURCE ) { document.querySelector("#dummy").play(); }
-            document.querySelector("#pauseToggle").setAttribute("class", CONFIG.pauseClass);
-            break;
-    }
-}
-
-const setDummyProgressOffset = (STATE) =>
-// We will update the progress indicator upon:
-//  * A new spotify track being played
-{
-    STATE.dummyProgressOffsetSec = document.querySelector("#dummy").currentTime; 
-}
-
-const dummyAudioHandler = (mode) =>
-// Activated when the pause/play media keys are pressed
-{
-    navigator.mediaSession.playbackState = mode;  
-    if(DEBUG) console.log(mode,event);
-    event.stopPropagation();
-}
-
-//********** HELPER *******//
-
-const audioSourceCoinflip = ( currentPlaylistCount ) =>
-// Returns a random (weighted based on the number of tracks from each source) 
-// key from CONFIG.audioSources to determine from which source 
-// the next track will be picked from
-{
-    // Spotify counter is updated in:
-    //  - Upon 'change' of #spotifyPlaylist
-    //  - InitSpotifyPlayer()
-    // Local counter is updated in:
-    //  - Upon 'change' of #localPlaylist
-    //  - InitLocalPlayer()
-
-    // If noContext is chosen for a source then we will always play from the other source
-    let currentPlaylists = { [SPOTIFY_SOURCE]: null, [LOCAL_SOURCE]: null };
-    try 
-    { 
-        currentPlaylists[SPOTIFY_SOURCE] = getCurrentPlaylist(SPOTIFY_SOURCE); 
-        currentPlaylists[LOCAL_SOURCE]   = getCurrentPlaylist(LOCAL_SOURCE); 
-    }
-    catch (e) { console.error(e); return; }
-
-    if ( currentPlaylists[SPOTIFY_SOURCE] == CONFIG.noContextOption ){ return LOCAL_SOURCE; }
-    if ( currentPlaylists[LOCAL_SOURCE]   == CONFIG.noContextOption ){ return SPOTIFY_SOURCE; }
-
-    let total_tracks = 0;
-    
-    for (let source of Object.keys( currentPlaylistCount ) )
-    // Each source should have a count when this function is invoked
-    {
-        total_tracks += currentPlaylistCount[source];
-    }
-
-    // The algorithm will give a fair disrubtion where every track has the same
-    // likliehood to play (1/250 in the example below):
-    
-    // [0,199  ]   ==> spotify (200 tracks)
-    // [200,250]   ==> local   (50 tracks)
-
-    let outcome = Math.floor( Math.random() *  total_tracks )
-    let _total = 0;
-    
-    for (let source of Object.keys( currentPlaylistCount ) )
-    {
-        _total += currentPlaylistCount[source];
-        if ( outcome <= _total ) { return source; }
-    }
-}
-
-const getTrackHistoryJSON = (HISTORY, index=0) =>
-// Returns a track from the HISTORY
-//  index=0 ==> currently playing
-//  index=1 ==> previous track
-// and verfies that it contains the neccessary information
-{
-    if (HISTORY.arr.length > index)
-    { 
-        if ( HISTORY.arr[index].trackNum == null )
-        { 
-            console.error(`No trackNum information for: ${HISTORY.arr[index]}`); 
-        }
-        return HISTORY.arr[index];
-    }
-    else
-    { 
-        console.error(`HISTORY does not have enough entries to fetch [${index}]:`, HISTORY); 
-        return {playlist: null, trackNum: null, spotifyURI: null}; 
-    }
-}
-
-const updatePlaylistCount = async (STATE, source) =>
-{
-    let currentPlaylist = null;
-    try { currentPlaylist = getCurrentPlaylist(source); }
-    catch (e) { console.error(e); return; }
-    
-    if ( currentPlaylist == CONFIG.noContextOption )
-    { 
-        STATE.currentPlaylistCount[source] = 0; 
-    }
-    else
-    {
-        switch (source)
-        {
-            case SPOTIFY_SOURCE:
-                let _json =  await SpotifyFunctions.getPlaylistJSON( currentSource );
-                if (_json != null && _json != undefined)
-                {
-                    STATE.currentPlaylistCount.spotify = _json.tracks.total; 
-                }
-                break;
-            case LOCAL_SOURCE:
-                await updateLocalPlaylistCount(STATE);
-                break;
-            default:
-                console.error(`Unknown source: ${source}`);
-        }
-
-        if ( STATE.currentPlaylistCount[source] == null )
-        { 
-            console.error(`Failed to update ${source} count`); 
-        }
-    }
-}
-
-const addTrackToHistory = (HISTORY, source, trackNum,uri=null) => 
-{
-    while (HISTORY.arr.length >= CONFIG.historyLimit) { HISTORY.arr.pop(); }
-    
-    let currentPlaylist = null;
-    try { currentPlaylist = getCurrentPlaylist(source); }
-    catch (e) { console.error(e); return; }
-    
-    HISTORY.arr = [ 
-        {
-            playlist: currentPlaylist,
-            trackNum: trackNum,
-            spotifyURI: uri
-        }
-    ].concat(HISTORY.arr);
-}
-
 const addTrackToTable = (STATE, HISTORY, source, spotifyPlayer, entry, index) =>
 {
     let row = document.createElement("tr");
@@ -998,7 +663,7 @@ const addTrackToTable = (STATE, HISTORY, source, spotifyPlayer, entry, index) =>
     row.className = CONFIG.rowClass; 
 
     let currentPlaylist = null;
-    try { currentPlaylist = getCurrentPlaylist(source); }
+    try { currentPlaylist = Util.getCurrentPlaylist(source); }
     catch (e) { console.error(e); return; }
 
     // Hook up each entry to play the indicated track when clicked (starting from index=1)
@@ -1019,149 +684,12 @@ const addTrackToTable = (STATE, HISTORY, source, spotifyPlayer, entry, index) =>
     document.querySelector("#trackList > tbody").appendChild(row);
 }
 
-const getNewTrackNumber = (HISTORY, source, playlistLength, trackNum=null) =>
-// The track numbers start from **0**
-{
-    let currentPlaylist = null;
-    try { currentPlaylist = getCurrentPlaylist(source); }
-    catch (e) { console.error(e, source, currentPlaylist); return -1; }
-    
-    // If all tracks in the playlist exist in the history, clear the history
-    if ( HISTORY.arr.filter( h => h.playlist == currentPlaylist ).length == playlistLength )
-    {
-        HISTORY.arr = [];
-    }
-
-    while( HISTORY.arr.filter( h => h.playlist == currentPlaylist )
-    .some( h => h.trackNum == trackNum ) || trackNum == null )
-    // Ensure that no track (from the current playlist) present in the history is picked
-    {
-        // We multiply by [length]
-        // Example: length = 16
-        //  ( random([0,1]) * 16 )
-        //  ==> [0,15]
-        trackNum  = Math.floor( Math.random() * (playlistLength) );
-    }
-
-    if(DEBUG) console.log(`Random trackNum = ${trackNum} = floor(rand(0,1) * ${playlistLength}`);
-    return trackNum;
-}
-
-const toggleShuffle = (STATE) =>
-{
-    STATE.shuffle = !STATE.shuffle;
-    if(STATE.shuffle)
-    {
-        document.querySelector("#shuffleToggle").className = 
-            document.querySelector("#shuffleToggle").className.replace( CONFIG.noShuffleClass, CONFIG.shuffleClass );
-    } 
-    else 
-    {
-        document.querySelector("#shuffleToggle").className =
-            document.querySelector("#shuffleToggle").className.replace( CONFIG.shuffleClass, CONFIG.noShuffleClass );
-    }
-}
-
-//********* MISC *********//
-
-const setSourceAndTrackNumForNonShuffle = (STATE, HISTORY, ref , newPlaylist) =>
-{
-    if (newPlaylist != false)
-    // If the track to play is from a new playlist, play the first track
-    {
-        ref.source   = newPlaylist;
-        ref.trackNum = 0;
-    }
-    else
-    {
-        if ( HISTORY.arr.length > 0 )
-        // If shuffle is not active we can identify the next track to play from the trackNum of
-        // the current track in the HISTORY, if the trackNum is the last in the playlist we attempt
-        // to play the first track from the other source (if one exists) and otherwise start over from 0
-        {
-            if ( HISTORY.arr[ STATE.historyPos ].trackNum == STATE.currentPlaylistCount[STATE.currentSource] - 1 )
-            // If the current track is the last in the playlist
-            {
-                let _otherSource = STATE.currentSource == SPOTIFY_SOURCE ? LOCAL_SOURCE : SPOTIFY_SOURCE;
-                
-                let otherSourcePlaylist = null;
-                try { otherSourcePlaylist = getCurrentPlaylist(_otherSource); }
-                catch (e) { console.error(e); return; }
-
-                if ( otherSourcePlaylist != CONFIG.noContextOption )
-                // If there is a playlist setup for the other source, play the first track from the other source
-                {
-                    ref.source       = _otherSource;
-                }
-                else 
-                { 
-                    ref.source       = STATE.currentSource; 
-                }
-
-                ref.trackNum = 0;
-            }
-            else
-            {
-                if(DEBUG) console.log(`(trackNum:${ref.trackNum}) = (HISTORY[${STATE.historyPos}].trackNum:${HISTORY.arr[STATE.historyPos].trackNum}) + 1`)
-                ref.trackNum     = HISTORY.arr[STATE.historyPos].trackNum + 1;
-                ref.source       = STATE.currentSource;
-            }
-        }
-        else
-        // If the HISTORY is empty play the first track from the source indicated by the
-        // top of the playlist UI
-        {  
-            ref.trackNum     = 0;
-            ref.source       = document.querySelector("#trackList > tbody > tr > td").className.match( CONFIG.iconCSS[SPOTIFY_SOURCE] ) ?
-                SPOTIFY_SOURCE : LOCAL_SOURCE; 
-        }
-    }
-}
-
-const getPlaylistOfCurrentTrack = (HISTORY,historyPos) =>
-{
-    if ( HISTORY.arr.length > historyPos  )
-    {
-        return HISTORY.arr[ historyPos ].playlist;
-    }
-    else {  throw(`Not enough tracks in history to fetch ${historyPos}`); }
-}
-
-const getCurrentPlaylist = (source) =>
-{
-    switch(source)
-    {
-        case SPOTIFY_SOURCE:
-            if ( document.querySelector("#spotifyPlaylist").length == 0 )
-            {
-                throw("No Spotify playlists loaded in <select> element");
-            }
-            else { return document.querySelector("#spotifyPlaylist").selectedOptions[0].innerText; }
-        case LOCAL_SOURCE:
-            if ( document.querySelector("#localPlaylist").length == 0 )
-            {
-                throw("No local playlists loaded in <select> element");
-            }
-            else { return document.querySelector("#localPlaylist").selectedOptions[0].innerText; }
-        default:
-            throw("getCurrentPlaylist() called with an invalid argument!", source);
-    }
-}
-
-const getDebug = (STATE,HISTORY) =>
-{
-    console.log("DEBUG:",STATE,HISTORY);
-}
-
-//********** EXPORTS ******************/
 export {
     // client.js
-    addPlayerListeners, updateProgressIndicator, addPlaylistTracksToUI, dummyAudioHandler, 
-    updatePlaylistCount, getCurrentPlaylist, 
+    addPlayerListeners, updateProgressIndicator, addPlaylistTracksToUI,
 
     // controls.js
-    setVolume, playPrevTrack, pauseToggle, seekPlayback, toggleShuffle, mediaPlay, mediaPause, 
-    modifyVisibility, getDebug,
+    playPrevTrack, pauseToggle,
     
     // control.js + client.js
     playNextTrack 
