@@ -19,12 +19,7 @@ module.exports = (fastify,functions,CONFIG) =>
     {
         return res.sendFile("resc/favicon.png");
     })
-
-    fastify.setNotFoundHandler( (req,res) => 
-    {
-        res.view('/templates/error.ejs', { error: "Not Found", code: 404 })
-    })
-
+   
     //*** OAuth STEP 0 ***//
     fastify.get('/setstate', (req, res) =>
     // Set state cookie
@@ -243,6 +238,22 @@ module.exports = (fastify,functions,CONFIG) =>
     {
         functions.getTrackData(req,res,cover=true);
     });
+
+    //***** Errors **********/
+    fastify.get('/error', (req, res) => 
+    // The error path is utilised by the OAuth process during failures
+    {
+        // The .view object is supplied by point-of-view and is used
+        // to parse inputs to the template engine
+        let err = req.query.error || "Unknown error" ;
+        res.view('/templates/error.ejs', { error: err.charAt(0).toUpperCase() + err.slice(1,) })
+    })
+
+    fastify.setNotFoundHandler( (req,res) => 
+    {
+        res.view('/templates/error.ejs', { error: "Not Found" })
+    });
+
 }
 
 
