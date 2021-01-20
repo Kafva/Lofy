@@ -123,7 +123,7 @@ const setSpotifyVolume = async (diff, newPercent=null ) =>
 
 const seekSpotifyPlayback = async (ms) =>
 {
-    // TODO will skip to the next/prev track if the seek operation overflows the scope of the track
+    // Will skip to the next/prev track if the seek operation overflows the scope of the track
     // could cause bugs
     let track_json = await getCurrentSpotifyTrack();
     if(DEBUG) console.log(track_json);

@@ -1,4 +1,4 @@
-import { DEBUG, SPOTIFY_SOURCE, LOCAL_SOURCE, CONFIG } from './clientConfig.js';
+import { DEBUG, SPOTIFY_SOURCE, LOCAL_SOURCE, LOCAL_ONLY, CONFIG } from './clientConfig.js';
 import * as LocalFunctions   from './localPlayerFunctions.js';
 import * as SpotifyFunctions from './spotifyFunctions.js';
 
@@ -230,12 +230,8 @@ const addTrackToHistory = (HISTORY, source, trackNum,uri=null) =>
 
 //********** Shuffle **********/
 
-const setSourceAndTrackNumForNonShuffle = (STATE, HISTORY, ref , newPlaylist) =>
+const setSourceAndTrackNumForNonShuffle = (STATE, HISTORY, ref , newPlaylist, spotifyPlayer) =>
 {
-    // In an edge-case were we are playing a track from Spotify and then change to the '-' playlist
-    // we need to ensure that the first track from the other playlist is started (if that is not also set to '-')
-    
-    
     if (newPlaylist != false)
     // If the track to play is from a new playlist, play the first track
     {
@@ -252,22 +248,26 @@ const setSourceAndTrackNumForNonShuffle = (STATE, HISTORY, ref , newPlaylist) =>
             if ( HISTORY.arr[ STATE.historyPos ].trackNum == STATE.currentPlaylistCount[STATE.currentSource] - 1 )
             // If the current track is the last in the playlist
             {
-                let _otherSource = STATE.currentSource == SPOTIFY_SOURCE ? LOCAL_SOURCE : SPOTIFY_SOURCE;
-                
-                let otherSourcePlaylist = null;
-                try { otherSourcePlaylist = getCurrentPlaylist(_otherSource); }
-                catch (e) { console.error(e); return; }
-
-                if ( otherSourcePlaylist != CONFIG.noContextOption )
-                // If there is a playlist setup for the other source, play the first track from the other source
+                if (spotifyPlayer != LOCAL_ONLY)
                 {
-                    ref.source       = _otherSource;
-                }
-                else 
-                { 
-                    ref.source       = STATE.currentSource; 
-                }
+                    let _otherSource = STATE.currentSource == SPOTIFY_SOURCE ? LOCAL_SOURCE : SPOTIFY_SOURCE;
+                    
+                    let otherSourcePlaylist = null;
+                    try { otherSourcePlaylist = getCurrentPlaylist(_otherSource); }
+                    catch (e) { console.error(e); return; }
 
+                    if ( otherSourcePlaylist != CONFIG.noContextOption )
+                    // If there is a playlist setup for the other source, play the first track from the other source
+                    {
+                        ref.source       = _otherSource;
+                    }
+                    else 
+                    { 
+                        ref.source       = STATE.currentSource; 
+                    }
+                }
+                else { ref.source = LOCAL_SOURCE; }
+                
                 ref.trackNum = 0;
             }
             else
@@ -351,11 +351,13 @@ const updateLocalPlaylistCount = async (STATE) =>
 
 //********** MISC *****************/
 
-const audioSourceCoinflip = (currentPlaylistCount) =>
+const audioSourceCoinflip = (currentPlaylistCount, spotifyPlayer) =>
 // Returns a random (weighted based on the number of tracks from each source) 
 // key from CONFIG.audioSources to determine from which source 
 // the next track will be picked from
 {
+    if(spotifyPlayer == LOCAL_ONLY){ return LOCAL_SOURCE; }
+    
     // Spotify counter is updated in:
     //  - Upon 'change' of #spotifyPlaylist
     //  - InitSpotifyPlayer()

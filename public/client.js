@@ -1,4 +1,4 @@
-import { DEBUG, SPOTIFY_SOURCE, LOCAL_SOURCE, CONFIG } from './clientConfig.js';
+import { DEBUG, SPOTIFY_SOURCE, LOCAL_SOURCE, LOCAL_ONLY, CONFIG } from './clientConfig.js';
 import * as SpotifyFunctions from './spotifyFunctions.js';
 import * as LocalFunctions   from './localPlayerFunctions.js';
 import * as Functions        from './stateFunctions.js';
@@ -46,8 +46,6 @@ const spotifyMain = (STATE,HISTORY) =>
     //      "Cross-Origin Request Blocked: The Same Origin Policy disallows reading 
     //      the remote resource at https://api.spotify.com/v1/melody/v1/logging/track_stream_verification"
     // will be displayed when skipping a song due to content blocking of spotify
-    // Web console View filter:
-    // -url:https://api.spotify.com/v1/melody/v1/logging/track_stream_verification -url:https://api.spotify.com/v1/melody/v1/logging/jssdk_playback_stats -url:https://api.spotify.com/v1/melody/v1/logging/jssdk_error
 
     // https://developer.spotify.com/documentation/web-playback-sdk/reference/#objects
     // Create a "Web Playback" object which can be chosen as the device to stream music to
@@ -192,8 +190,8 @@ else if (document.location.href.match("/local"))
 {
     window.onload = () =>
     {
-        localMain(STATE, HISTORY);
-        controls(STATE,HISTORY,null);
+        localMain(STATE, HISTORY, LOCAL_ONLY);
+        controls(STATE,  HISTORY, LOCAL_ONLY);
     }
 }
 

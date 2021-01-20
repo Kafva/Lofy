@@ -3,7 +3,7 @@
 //      * playSpotifyTrack()
 //      * playLocalTrack()
 
-import { DEBUG, SPOTIFY_SOURCE, LOCAL_SOURCE, CONFIG } from './clientConfig.js';
+import { DEBUG, SPOTIFY_SOURCE, LOCAL_SOURCE, LOCAL_ONLY, CONFIG } from './clientConfig.js';
 import * as LocalFunctions   from './localPlayerFunctions.js';
 import * as SpotifyFunctions from './spotifyFunctions.js';
 import * as Util             from './util.js';
@@ -84,11 +84,11 @@ const playNextTrack = async (STATE, HISTORY, spotifyPlayer, newPlaylist=false) =
     if ( STATE.historyPos == 0 )
     // If we are at (historyPos:0) play a new track
     {
-        if(STATE.shuffle){ entry.source = Util.audioSourceCoinflip(STATE.currentPlaylistCount); }
+        if(STATE.shuffle){ entry.source = Util.audioSourceCoinflip(STATE.currentPlaylistCount,spotifyPlayer); }
         else 
         // If shuffle is not active
         {
-            Util.setSourceAndTrackNumForNonShuffle(STATE, HISTORY, entry, newPlaylist);
+            Util.setSourceAndTrackNumForNonShuffle(STATE, HISTORY, entry, newPlaylist, spotifyPlayer);
         }
        
         let currentPlaylist = null;
@@ -181,12 +181,16 @@ const playTrackFromIndex = (STATE, HISTORY, source, spotifyPlayer, playlistName,
             playSpotifyTrack(STATE, HISTORY, playlistName, spotifyPlayer, trackNum, addToHistory );    
             break;
         case LOCAL_SOURCE:
-            // Pause Spotify and start playing from the local source
+            // Pause Spotify and start playing from the local source (if not in LOCAL_ONLY mode)
             let currentPlaylist = null;
-            try { currentPlaylist = Util.getCurrentPlaylist(SPOTIFY_SOURCE); }
-            catch (e) { console.error(e); return; }
+            
+            if (spotifyPlayer != LOCAL_ONLY)
+            {
+                try { currentPlaylist = Util.getCurrentPlaylist(SPOTIFY_SOURCE); }
+                catch (e) { console.error(e); return; }
+                toggleSpotifyPlayback(STATE, HISTORY, currentPlaylist, spotifyPlayer, true, false);
+            }
 
-            toggleSpotifyPlayback(STATE, HISTORY, currentPlaylist, spotifyPlayer, true, false);
             playLocalTrack(STATE, HISTORY, playlistName, trackNum, addToHistory);
             break; 
     }

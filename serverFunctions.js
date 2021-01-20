@@ -185,7 +185,7 @@ module.exports = (CONFIG) =>
             {
                 if (track.length == 0)
                 {
-                    console.error(`============= TODO ================\nSkipping metadata fetch for ${playlist}`, track);
+                    console.error(`=============================\nSkipping metadata fetch for ${playlist}`, track);
                     continue
                 }
                 
@@ -270,16 +270,23 @@ module.exports = (CONFIG) =>
                 // Fetch the .trackNum line from the playlist text file with the path to the sound file
                 let tracks = (await fs.promises.readFile(`${CONFIG.local_playlists_dir}/${playlistName}.txt`, 'utf-8')).toString().split('\n');
 
+                let audio = null;
                 try
                 {
-                    stream = fs.createReadStream( tracks[ req.params.trackNum ] );
+                    /* NOTE that the encoding should be null and not 'binary', which
+                    is an alias for 'latin1'... */
+                    audio = await fs.promises.readFile( tracks[req.params.trackNum], null);
                 }
-                catch (e) { console.error(`getTrackAudio(): Can't find ${tracks[ req.params.trackNum]}`); return; }
+                catch (e) 
+                { 
+                    console.error(`getTrackAudio(): Can't find ${tracks[req.params.trackNum]}`); 
+                    errorRedirect(res, "Track not found", true);
+                }
                 
-                // Determine the Content-type of the sound file
-                metadata = await getMusicMeta(  tracks[ req.params.trackNum] );
+                let metadata = await getMusicMeta(  tracks[ req.params.trackNum] );
                 if (cover)
                 {
+                    // Extract the cover from the file
                     if ( metadata.common.picture != undefined )
                     {
                         if ( metadata.common.picture.length >= 1 )
@@ -292,12 +299,27 @@ module.exports = (CONFIG) =>
                 }
                 else
                 {
-                    res.type('audio/mpeg');
+                    // Set the Content-Type (additional checks need to be added for other types than .m4a/.mp3)
+                    if ( metadata.format.container.match(/M4A/i) ) { res.type('audio/m4a'); }
+                    else { res.type('audio/mpeg'); }
 
-                    // Send a readable stream with the audio,
+                    // Besides the Content-type every browser except Firefox expects
+                    // the following headers
+                    //      Accept-ranges:                bytes
+                    //      Cache-control:                public, max-age=0
+                    //      Content-length:               <...>
+                    // For larger files it might be neccessary to chunk the transmission using
+                    //      Content-Range:                'bytes ' + start + '-' + end + '/' + fileLength,
+                    //      Accept-Ranges:                'bytes',
+                    //      Content-Length:               chunkSize,
+                    //      Content-Type:                 contentType
+                    res.header("Accept-ranges", "bytes" );
+                    res.header("Cache-control", "public, max-age=0" );
+                    res.header("Content-length", (await fs.promises.stat(tracks[req.params.trackNum])).size );
+
                     // Client usage:
                     //  <audio src="/audio/[playlist]/[trackNum]>"
-                    return res.send(stream);
+                    return res.send(audio);
                 }
             }
             else { errorRedirect(res, `'${playlistName}' only has ${track_count} tracks`, textOnly=true); }

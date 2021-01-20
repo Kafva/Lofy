@@ -1,11 +1,12 @@
 const DEBUG = true;
 const SPOTIFY_SOURCE = 'spotify';
 const LOCAL_SOURCE   = 'local';
+const LOCAL_ONLY     = 'only';
 
 const CONFIG = Object.freeze({
     //** Default config **/
-    defaultLocalPlaylist: 'Df',
-    defaultSpotifyPlaylist: '✨',
+    defaultLocalPlaylist: 'moon',
+    defaultSpotifyPlaylist: '🌙',
     
     historyLimit: 50,
     volumeStep: 5,
@@ -62,4 +63,4 @@ const CONFIG = Object.freeze({
     debugInfo: 'D',
 });
 
-export { DEBUG, SPOTIFY_SOURCE, LOCAL_SOURCE, CONFIG };
+export { DEBUG, SPOTIFY_SOURCE, LOCAL_SOURCE, LOCAL_ONLY, CONFIG };

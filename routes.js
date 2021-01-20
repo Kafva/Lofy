@@ -1,4 +1,4 @@
-// `module.exports` is equivilent to what will be reeturned from requiring()
+// `module.exports` is equivilent to what will be returned from requiring()
 // a module, in this case a function containing the definition of all the routes
 
 // Note that requiring() the same package several times won't cause any overhead (cached)
@@ -17,7 +17,12 @@ module.exports = (fastify,functions,CONFIG) =>
     // Declare a handler for the favicon fetch
     fastify.get('/favicon.png', (req, res) => 
     {
-        return res.sendFile("resc/favicon.png") 
+        return res.sendFile("resc/favicon.png");
+    })
+
+    fastify.setNotFoundHandler( (req,res) => 
+    {
+        res.view('/templates/error.ejs', { error: "Not Found", code: 404 })
     })
 
     //*** OAuth STEP 0 ***//
@@ -205,26 +210,18 @@ module.exports = (fastify,functions,CONFIG) =>
         }
     })
 
-    fastify.get('/error', (req, res) => 
-    {
-        // The .view object is supplied by point-of-view and is used
-        // to parse inputs to the template engine
-        let err = req.query['error'] || "Unknown error" ;
-        res.view('/templates/error.ejs', { error: err.charAt(0).toUpperCase() + err.slice(1,) })
-    })
-    
     fastify.get('/', (req, res) => 
     {
         res.redirect('/home'); 
     })
     
     //******* LOCAL FILES ********/
+    
     fastify.get('/local', (req, res) => 
+    // Access without any spotify support loaded
     {
         res.view('/templates/index.ejs', { route: '/local', CONFIG: CONFIG } );
     })
-
-
 
     fastify.get('/playlists', async (req, res) =>
     {
@@ -246,7 +243,6 @@ module.exports = (fastify,functions,CONFIG) =>
     {
         functions.getTrackData(req,res,cover=true);
     });
-
 }
 
 

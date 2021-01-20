@@ -95,11 +95,8 @@ const runAsync = async () =>
 		parseOptions: {} 
 	})
 
-	//************************************/
-
-	// Setup the routes and error handlers
+	// Setup the routes
 	require("./routes")(fastify,functions,CONFIG);
-	require("./errorHandlers")(fastify);
 
 	// Start the server
 	require("./server")(fastify,CONFIG);
