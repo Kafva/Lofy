@@ -73,12 +73,12 @@ const mediaHandlers = (STATE, HISTORY, spotifyPlayer) =>
 {
     if ('mediaSession' in navigator) 
     {
-        navigator.mediaSession.setActionHandler(CONFIG.dummyPlay, () => 
+        navigator.mediaSession.setActionHandler(CONFIG.play, () => 
         { 
             if(DEBUG) console.log(`----PLAY---- (${navigator.mediaSession.playbackState})`); 
             Util.mediaPlay(STATE.currentSource);
         });
-        navigator.mediaSession.setActionHandler(CONFIG.dummyPause, () => 
+        navigator.mediaSession.setActionHandler(CONFIG.pause, () => 
         { 
             if(DEBUG) console.log(`----PAUSE---- (${navigator.mediaSession.playbackState})`); 
             Util.mediaPause(STATE.currentSource);

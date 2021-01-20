@@ -219,7 +219,20 @@ const getPlayerJSON = async () =>
     return body;
 }
 
-//************** HELPER ***************/
+//************** MISC ***************/
+
+const toggleDummyPlayerStatusForSpotify = (mode) =>
+{
+    switch(mode)
+    {
+        case CONFIG.pause:
+            document.querySelector("#dummy").pause();
+            break;
+        case CONFIG.play:
+            document.querySelector("#dummy").play();
+            break;
+    }
+}
 
 const setupSpotifyPlaylistsUI = async () =>
 {
@@ -283,13 +296,9 @@ const getCookiesAsJSON = () =>
 
 //********** EXPORTS ******************/
 export { 
-    // client.js
-    refreshToken, 
+    refreshToken, getCookiesAsJSON,
     
-    // stateFunctions.js
     InitSpotifyPlayer, setSpotifyVolume, seekSpotifyPlayback,
     getDeviceJSON, getPlayerJSON, getPlaylistJSON, getCurrentSpotifyTrack,
-
-    // client.js + stateFunctions.js
-    getCookiesAsJSON,
+    toggleDummyPlayerStatusForSpotify,
 };

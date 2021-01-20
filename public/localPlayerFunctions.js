@@ -80,13 +80,4 @@ const setLocalVolume = (diff, newPercent=null) =>
     document.querySelector("#volume").innerText = `${Math.floor(newPercent*100)} %`;
 }
 
-export { 
-    // client.js + stateFunctions.js
-    setLocalVolume,
-    
-    // stateFunctions.js
-    getLocalPlaylistJSON,
-    
-    // client.js
-    setLocalPlaylistOptions,
-};
+export { setLocalVolume, getLocalPlaylistJSON, setLocalPlaylistOptions };

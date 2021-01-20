@@ -23,8 +23,8 @@ const CONFIG = Object.freeze({
     defaultAutoRepeatState: 'off',
     tableColumns: 5,
     unknown: 'Unknown',
-    dummyPlay: 'play',
-    dummyPause: 'pause',
+    play: 'play',
+    pause: 'pause',
     
     coverOpacity: 0.6,
     coverHeight: 300,

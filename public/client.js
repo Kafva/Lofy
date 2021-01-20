@@ -1,4 +1,4 @@
-import { SPOTIFY_SOURCE, LOCAL_SOURCE, CONFIG } from './clientConfig.js';
+import { DEBUG, SPOTIFY_SOURCE, LOCAL_SOURCE, CONFIG } from './clientConfig.js';
 import * as SpotifyFunctions from './spotifyFunctions.js';
 import * as LocalFunctions   from './localPlayerFunctions.js';
 import * as Functions        from './stateFunctions.js';
@@ -94,14 +94,21 @@ const spotifyMain = (STATE,HISTORY) =>
     });
 
     // Setup listeners for the dummy <audio> 
-    document.querySelector("#dummy").onplay  = Util.dummyAudioHandler('playing');
-    document.querySelector("#dummy").onpause = Util.dummyAudioHandler('paused');
+    const dummyAudioHandler = (mode) =>
+    {
+        navigator.mediaSession.playbackState = mode;  
+        if(DEBUG) console.log(mode,event);
+        event.stopPropagation();
+    }
+
+    document.querySelector("#dummy").onplay  = dummyAudioHandler('playing');
+    document.querySelector("#dummy").onpause = dummyAudioHandler('paused');
 
     document.querySelector("#dummy").addEventListener('timeupdate', () =>
     // We will use timeupdates from the dummy spotifyPlayer (which is synced up to play
     // in correspondence with spotify) to produce a progress bar which the spotify spotifyPlayer can use
     {
-        Functions.updateProgressIndicator(STATE);
+        Functions.timeUpdateHandler(STATE);
     });
     
     return spotifyPlayer;
@@ -158,7 +165,7 @@ const localMain = (STATE,HISTORY,spotifyPlayer) =>
     document.querySelector("#localPlayer").addEventListener('timeupdate', () => 
     // Event listener to contiously update progress indicator
     { 
-        Functions.updateProgressIndicator(STATE);
+        Functions.timeUpdateHandler(STATE);
     });
 };
 

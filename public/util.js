@@ -2,125 +2,58 @@ import { DEBUG, SPOTIFY_SOURCE, LOCAL_SOURCE, CONFIG } from './clientConfig.js';
 import * as LocalFunctions   from './localPlayerFunctions.js';
 import * as SpotifyFunctions from './spotifyFunctions.js';
 
-//************ UI ****************/
+//************ Pause/Play status ****************/
 
-const togglePauseTrackUI = (mode) =>
+const toggleLocalPlayback = () =>
+{
+    let p = document.querySelector("#localPlayer");
+    if (p.paused) { p.play();  togglePauseForUI(CONFIG.play);  }
+    else          { p.pause(); togglePauseForUI(CONFIG.pause); }
+}
+
+const togglePauseForUI = (mode) =>
+// Update the Play/Pause button in the bar and within the playlist 
 {
     let rows = document.querySelectorAll("#trackList > tbody > tr");
-    
-    if (rows != [] && rows != null)
-    {
-        switch(mode)
-        {
-            case CONFIG.dummyPause:
-                // Change the track with the currentTrackCSS to have a play icon when pausing playback
-                    for (let row of rows)
-                    { 
-                        if ( row.querySelectorAll("td")[0].className.match( CONFIG.currentTrackCSS ) )
-                        {
-                            if(DEBUG) console.log("Adding playIcon!", row);
-                            let _className  = row.querySelectorAll("td")[0].className
-                            
-                            _className      = _className.replace(CONFIG.currentTrackCSS, CONFIG.playClass);
-                            
-                            row.querySelectorAll("td")[0].className = _className;
-                        }
-                    }
-                break;
-            case CONFIG.dummyPlay:
-                // Replace the playIcon with the currentTrackCSS when resuming playback
-                for (let row of rows)
-                { 
-                    if ( row.querySelectorAll("td")[0].className.match( CONFIG.playClass ) )
-                    {
-                        if (DEBUG) console.log("Removing playIcon!", row);
-                        let _className  = row.querySelectorAll("td")[0].className
-                        _className      = _className.replace(CONFIG.playClass , CONFIG.currentTrackCSS);
-                        row.querySelectorAll("td")[0].className = _className;
-                    }
-                }
-                break;
-        }
-    }
-}
-
-const modifyVisibility = async (selector, visibleOpacity=1, checkSrc=false, insertBefore=false) =>
-{
-    if ( getComputedStyle(document.querySelector(selector)).opacity == 0 )
-    // Make visible
-    {
-        // Move the item into the flexbox
-        let el =  document.querySelector(selector);
-        if (insertBefore) 
-        { 
-            let child = document.querySelector("#container > *");
-            if( child != null)
-            {  
-                document.querySelector("#container").insertBefore(el, child);
-            }
-            else { document.querySelector("#container").append(el); }
-             
-        }
-        else { document.querySelector("#container").append(el); }
-        
-        if(checkSrc)
-        {
-            if ( document.querySelector(selector).src != "" )
-            {
-                document.querySelector(selector).style.visibility = 'visible'; 
-                document.querySelector(selector).style.opacity = visibleOpacity; 
-            }  
-        }
-        else 
-        { 
-            document.querySelector(selector).style.visibility = 'visible'; 
-            document.querySelector(selector).style.opacity = visibleOpacity; 
-        }
-    }
-    else
-    // Make invisible
-    {
-        // We haft to wait before setting the visibility for the animation to complete
-        document.querySelector(selector).style.opacity = 0; 
-        await new Promise(r => setTimeout(r, 500));
-        document.querySelector(selector).style.visibility = 'hidden'; 
-
-
-        // Move the item out of the flexbox
-        let el =  document.querySelector(selector);
-        document.body.append(el);
-    }
-}
-
-//************ Dummy audio ********/
-
-const updateDummyPlayerStatus = (source, mode) =>
-// Start/Stop the dummy spotifyPlayer and update the UI, if the source is NOT spotify
-// we only update the UI
-{
-    togglePauseTrackUI(mode);
+    if(rows == null) console.error("Can't fetch rows of playlist");
     
     switch(mode)
     {
-        case CONFIG.dummyPause:
-            if( source == SPOTIFY_SOURCE ){ document.querySelector("#dummy").pause(); }
-            document.querySelector("#pauseToggle").setAttribute("class", CONFIG.playClass);
-            break;
-        case CONFIG.dummyPlay:
-            if( source == SPOTIFY_SOURCE ) { document.querySelector("#dummy").play(); }
+        case CONFIG.play:
+            // Update the playlist with an amp instead of the 'playClass' when resuming playback
+            for (let row of rows)
+            { 
+                if ( row.querySelectorAll("td")[0].className.match( CONFIG.playClass ) )
+                {
+                    if (DEBUG) console.log(`Replacing ${CONFIG.playClass} from ${row.querySelectorAll("td")[1].innerHTML}`);
+                    let _className  = row.querySelectorAll("td")[0].className
+                    _className      = _className.replace(CONFIG.playClass , CONFIG.currentTrackCSS);
+                    row.querySelectorAll("td")[0].className = _className;
+                }
+            }
+
+            // Update the bar UI
             document.querySelector("#pauseToggle").setAttribute("class", CONFIG.pauseClass);
+            break;
+        case CONFIG.pause:
+            // Update the playlist with the 'playClass' instead of the amp
+            for (let row of rows)
+            { 
+                if ( row.querySelectorAll("td")[0].className.match( CONFIG.currentTrackCSS ) )
+                {
+                    if (DEBUG) console.log(`Replacing ${CONFIG.currentTrackCSS} from ${row.querySelectorAll("td")[1].innerHTML}`);
+                    let _className  = row.querySelectorAll("td")[0].className
+                    
+                    _className      = _className.replace(CONFIG.currentTrackCSS, CONFIG.playClass);
+                    
+                    row.querySelectorAll("td")[0].className = _className;
+                }
+            }
+            // Update the bar UI
+            document.querySelector("#pauseToggle").setAttribute("class", CONFIG.playClass);
             break;
     }
 }
-
-const dummyAudioHandler = (mode) =>
-// Activated when the pause/play media keys are pressed
-{
-    navigator.mediaSession.playbackState = mode;  
-    if(DEBUG) console.log(mode,event);
-    event.stopPropagation();
-}
-
 
 //********** Audio Control ************//
 
@@ -158,7 +91,7 @@ const seekPlayback = (source, direction) =>
     p.currentTime = p.currentTime + ( direction * (CONFIG.seekStepMs/1000) );
 }
 
-//********* Media keys *******/
+//********* Media keys ***************/
 
 const mediaPause = async (source) =>
 {
@@ -180,7 +113,10 @@ const mediaPause = async (source) =>
                     headers: { 'Authorization': `Bearer ${SpotifyFunctions.getCookiesAsJSON().access_token}` },
                 });
             }
-            updateDummyPlayerStatus(SPOTIFY_SOURCE, CONFIG.dummyPause);
+            
+            togglePauseForUI(CONFIG.pause);
+            SpotifyFunctions.toggleDummyPlayerStatusForSpotify(CONFIG.pause);
+
             break;
         case LOCAL_SOURCE:
             toggleLocalPlayback();
@@ -209,10 +145,12 @@ const mediaPlay = async (source) =>
                     headers: { 'Authorization': `Bearer ${SpotifyFunctions.getCookiesAsJSON().access_token}` },
                 });
             }
-            updateDummyPlayerStatus(SPOTIFY_SOURCE, CONFIG.dummyPlay);
+            togglePauseForUI(CONFIG.play);
+            SpotifyFunctions.toggleDummyPlayerStatusForSpotify(CONFIG.play);
+
             break;
         case LOCAL_SOURCE:
-            toggleLocalPlayback(LOCAL_SOURCE);
+            toggleLocalPlayback();
             break;
     }
 }
@@ -271,7 +209,11 @@ const getTrackHistoryJSON = (HISTORY, index=0) =>
 
 const addTrackToHistory = (HISTORY, source, trackNum,uri=null) => 
 {
-    while (HISTORY.arr.length >= CONFIG.historyLimit) { HISTORY.arr.pop(); }
+    while (HISTORY.arr.length >= CONFIG.historyLimit) 
+    { 
+        if(DEBUG) console.log(`Pruning ${HISTORY.arr[HISTORY.arr.length-1].playlist}:${HISTORY.arr[HISTORY.arr.length-1].trackNum} from HISTORY`);
+        HISTORY.arr.pop(); 
+    }
     
     let currentPlaylist = null;
     try { currentPlaylist = getCurrentPlaylist(source); }
@@ -290,6 +232,10 @@ const addTrackToHistory = (HISTORY, source, trackNum,uri=null) =>
 
 const setSourceAndTrackNumForNonShuffle = (STATE, HISTORY, ref , newPlaylist) =>
 {
+    // In an edge-case were we are playing a track from Spotify and then change to the '-' playlist
+    // we need to ensure that the first track from the other playlist is started (if that is not also set to '-')
+    
+    
     if (newPlaylist != false)
     // If the track to play is from a new playlist, play the first track
     {
@@ -334,7 +280,7 @@ const setSourceAndTrackNumForNonShuffle = (STATE, HISTORY, ref , newPlaylist) =>
         else
         // If the HISTORY is empty play the first track from the source indicated by the
         // top of the playlist UI
-        {  
+        {            
             ref.trackNum     = 0;
             ref.source       = document.querySelector("#trackList > tbody > tr > td").className.match( CONFIG.iconCSS[SPOTIFY_SOURCE] ) ?
                 SPOTIFY_SOURCE : LOCAL_SOURCE; 
@@ -462,13 +408,13 @@ const getCurrentPlaylist = (source) =>
             {
                 throw("No Spotify playlists loaded in <select> element");
             }
-            else { return document.querySelector("#spotifyPlaylist").selectedOptions[0].innerText; }
+            else { return document.querySelector("#spotifyPlaylist").selectedOptions[0].innerHTML; }
         case LOCAL_SOURCE:
             if ( document.querySelector("#localPlaylist").length == 0 )
             {
                 throw("No local playlists loaded in <select> element");
             }
-            else { return document.querySelector("#localPlaylist").selectedOptions[0].innerText; }
+            else { return document.querySelector("#localPlaylist").selectedOptions[0].innerHTML; }
         default:
             throw("getCurrentPlaylist() called with an invalid argument!");
     }
@@ -483,15 +429,60 @@ const getPlaylistOfCurrentTrack = (HISTORY,historyPos) =>
     else {  throw(`Not enough tracks in history to fetch ${historyPos}`); }
 }
 
+const modifyVisibility = async (selector, visibleOpacity=1, checkSrc=false, insertBefore=false) =>
+{
+    if ( getComputedStyle(document.querySelector(selector)).opacity == 0 )
+    // Make visible
+    {
+        // Move the item into the flexbox
+        let el =  document.querySelector(selector);
+        if (insertBefore) 
+        { 
+            let child = document.querySelector("#container > *");
+            if( child != null)
+            {  
+                document.querySelector("#container").insertBefore(el, child);
+            }
+            else { document.querySelector("#container").append(el); }
+             
+        }
+        else { document.querySelector("#container").append(el); }
+        
+        if(checkSrc)
+        {
+            if ( document.querySelector(selector).src != "" )
+            {
+                document.querySelector(selector).style.visibility = 'visible'; 
+                document.querySelector(selector).style.opacity = visibleOpacity; 
+            }  
+        }
+        else 
+        { 
+            document.querySelector(selector).style.visibility = 'visible'; 
+            document.querySelector(selector).style.opacity = visibleOpacity; 
+        }
+    }
+    else
+    // Make invisible
+    {
+        // We haft to wait before setting the visibility for the animation to complete
+        document.querySelector(selector).style.opacity = 0; 
+        await new Promise(r => setTimeout(r, 500));
+        document.querySelector(selector).style.visibility = 'hidden'; 
+
+
+        // Move the item out of the flexbox
+        let el =  document.querySelector(selector);
+        document.body.append(el);
+    }
+}
+
 export { 
     // controls.js
     modifyVisibility, mediaPlay, mediaPause, seekPlayback, setVolume, toggleShuffle,
 
     // stateFunctions.js
-    updateDummyPlayerStatus, getCurrentPlaylist, getPlaylistOfCurrentTrack, audioSourceCoinflip, 
+    togglePauseForUI, getCurrentPlaylist, getPlaylistOfCurrentTrack, audioSourceCoinflip, 
     getTrackHistoryJSON, addTrackToHistory, setSourceAndTrackNumForNonShuffle, getNewTrackNumber, 
-    updatePlaylistCount,
-   
-    // client.js
-    dummyAudioHandler
+    updatePlaylistCount, toggleLocalPlayback,
 }
