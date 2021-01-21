@@ -49,7 +49,7 @@ const spotifyMain = (STATE,HISTORY) =>
 
     // https://developer.spotify.com/documentation/web-playback-sdk/reference/#objects
     // Create a "Web Playback" object which can be chosen as the device to stream music to
-    // (initalised through including a script on the main page)
+    // (initalised through inclusion of `spotify-player.js` on the main page)
     const spotifyPlayer = new Spotify.Player({
         name: CONFIG.spotifyPlayerName,
         getOAuthToken: cb => { cb( SpotifyFunctions.getCookiesAsJSON().access_token  ); }
@@ -170,7 +170,8 @@ const localMain = (STATE,HISTORY,spotifyPlayer) =>
 const controls = (STATE, HISTORY, spotifyPlayer) =>
 {
     // Add global event listeners
-    window.addEventListener('click',   ()      => Controls.clickHandler   (STATE, HISTORY, spotifyPlayer)           );
+    window.addEventListener('click',    ()      => Controls.clickHandler   (STATE, HISTORY, spotifyPlayer)       );
+    window.addEventListener('touchend', ()      => Controls.clickHandler   (STATE, HISTORY, spotifyPlayer)       );
     window.addEventListener('keydown', (event) => Controls.keyboardHandler(STATE, HISTORY, spotifyPlayer, event) );
     
     // Initiate the mediakey handlers

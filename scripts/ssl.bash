@@ -26,7 +26,7 @@ mkdir -p $sslPath/certs $sslPath/newcerts $sslPath/private $sslPath/crl
 [ -f $sslPath/private/ca.key ] || {
 
 	# Generate self signed root CA cert
-	openssl req -config <(cat $sslConf | sed "s/lofy/$name/g") \
+	openssl req -config <(cat $sslConf | sed "s,lofy,$name,g; s,REPLACE_ME,$PWD/ssl,g") \
 		-nodes -x509 -new -days $lifetime \
 		-subj "/CN=$name CA/" \
 		-keyout $sslPath/private/ca.key -out $sslPath/certs/ca.crt
@@ -37,13 +37,13 @@ mkdir -p $sslPath/certs $sslPath/newcerts $sslPath/private $sslPath/crl
 [ -f $outdir/server.key ] || {
 	
 	# Generate server cert to be signed
-	openssl req -config <(cat $sslConf | sed "s/lofy/$name/g") \
+	openssl req -config <(cat $sslConf | sed "s/lofy/$name/g; s,REPLACE_ME,$PWD/ssl,g") \
 		-nodes -new -days $lifetime \
 		-subj "/CN=$name/" \
 		-keyout $outdir/server.key -out /tmp/server.csr &&
 
 	# Sign the server cert
-	openssl ca -config <(cat $sslConf | sed "s/lofy/$name/g") -policy policy_anything \
+	openssl ca -config <(cat $sslConf | sed "s/lofy/$name/g; s,REPLACE_ME,$PWD/ssl,g") -policy policy_anything \
 	-in /tmp/server.csr -out $outdir/server.crt &&
 
 	rm -f /tmp/server.csr

@@ -154,7 +154,7 @@ module.exports = (fastify,functions,CONFIG) =>
         if ( req.cookies.redirect == null )
         { 
             console.log("======== Redirecting to /setstate ========="); 
-            res.redirect('/setstate'); 
+            return res.redirect('/setstate'); 
         }
         
         delete req.cookies.redirect;
@@ -223,8 +223,7 @@ module.exports = (fastify,functions,CONFIG) =>
         // To play media from local playslists (interspersed with Spotify and/or seperatly) 
         // the client will fetch a JSON object with each metadata for each playlist
         // defined under ./playlists/<...>.txt
-        res.type("application/json");
-        res.send( await functions.getLocalPlaylists() );
+        res.type("application/json").send( await functions.getLocalPlaylists() );
     });
     
     fastify.get('/audio/:playlist/:trackNum', (req, res) => 

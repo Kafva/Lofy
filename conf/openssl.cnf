@@ -29,7 +29,7 @@ default_ca	= CA_Root		# The default ca section (does not need to match the CN)
 ####################################################################
 [ CA_Root ]
 
-dir		= /Users/jonas/XcodeX/Pparker/Lofy/ssl	# Where everything is kept
+dir		= REPLACE_ME	# Where everything is kept
 certs		= $dir/certs		# Where the issued certs are kept
 crl_dir		= $dir/crl		# Where the issued crl are kept
 database	= $dir/index.txt	# database index file.

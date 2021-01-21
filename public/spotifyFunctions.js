@@ -60,6 +60,12 @@ const InitSpotifyPlayer = async (spotifyPlayer) =>
         headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
     });
     
+    // Set shuffle state off ('silence' might be played first otherwise)
+    await fetch(`https://api.spotify.com/v1/me/player/shuffle?state=false`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
+    });
+    
     // Set volume to <default> %
     try { setSpotifyVolume(-1, CONFIG.defaultPercent); }
     catch (e) { console.error(e); }

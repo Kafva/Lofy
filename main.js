@@ -30,11 +30,11 @@ const runAsync = async () =>
 		scope: 'playlist-read-private streaming user-read-private user-read-email user-modify-playback-state user-read-playback-state user-read-currently-playing',
 		state_cookie_key: 'spotify_auth_state',
 
-		client_id: 	   await fs.promises.readFile("./secret/client_id", 'utf-8'), 
-		client_secret: await fs.promises.readFile("./secret/client_secret", 'utf-8'),
+		client_id: 	   (await fs.promises.readFile("./secret/client_id", 'utf-8')).trim('\n'), 
+		client_secret: (await fs.promises.readFile("./secret/client_secret", 'utf-8')).trim('\n'),
 		
-		tls_key: 	   await fs.promises.readFile("./secret/server.key", 'utf-8'),
-		tls_cert: 	   await fs.promises.readFile("./secret/server.crt", 'utf-8'),
+		tls_key: 	   (await fs.promises.readFile("./secret/server.key", 'utf-8')).trim('\n'),
+		tls_cert: 	   (await fs.promises.readFile("./secret/server.crt", 'utf-8')).trim('\n'),
 
 		local_playlists_dir: "./playlists"
 	}

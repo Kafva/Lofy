@@ -1,4 +1,5 @@
 import { DEBUG, CONFIG }     from './clientConfig.js';
+import { getPlayerJSON } from './spotifyFunctions.js';
 import * as Functions        from './stateFunctions.js';
 import * as Util             from './util.js';
 
@@ -33,7 +34,14 @@ const keyboardHandler = (STATE, HISTORY, spotifyPlayer, event) =>
         switch(event.key)
         {
             case CONFIG.debugInfo:
-                console.log("DEBUG:",STATE,HISTORY);
+                if(DEBUG)
+                {
+                    (async () => 
+                    {
+                        let _json = await getPlayerJSON();
+                        console.log("DEBUG:",STATE,HISTORY, _json);
+                    })();
+                }    
                 break;
             case CONFIG.volumeUp:
                 Util.setVolume(STATE.currentSource, CONFIG.volumeStep);
