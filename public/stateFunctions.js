@@ -631,6 +631,7 @@ const updateCurrentTrackInBarAndPlaylist = async (HISTORY, historyPos, source) =
     }
     else { throw(`Failed to fetch playlist rows`); }
 
+    document.title = `${CONFIG.spotifyPlayerName} — ${trackName}`;    
     document.querySelector("#currentTrack").innerText = trackName;
     document.querySelector("#currentSource").setAttribute("class", CONFIG.iconCSS[source] ); 
 }
