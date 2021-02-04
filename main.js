@@ -15,7 +15,7 @@ const runAsync = async () =>
 	{
 		DEBUG: true,
 		WEB_SERVICE_PORT: PORT,
-		WEB_SERVICE_ADDR: '0.0.0.0',
+		WEB_SERVICE_ADDR: '127.0.0.1',
 		STATE_STR_LENGTH: 16,
 		DIR_ROOT: 'public',
 

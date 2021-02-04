@@ -15,7 +15,7 @@ Install node dependencies
 npm install
 ```
 
-The app can then be ran with `node main.js`. A configuration to manage the service via `launchctl` is included. Note that to use the provided `com..lofy.plist` configuration the `WorkingDirectory` needs to be modified in accordance with the setup.
+The app can then be ran with `node main.js`. A configuration to manage the service via `launchctl` is included. Note that to use the provided `com..lofy.plist` configuration the `WorkingDirectory` needs to be modified in accordance with the setup. If you are using `nvm` you may also haft to change the path to the `node` executable (project uses v15.8.0).
 
 ```bash
 # Load the service (not persistent after a reboot) 
