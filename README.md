@@ -3,11 +3,7 @@
 ## Setting up the service
 Create a Spotify developer account and register a new application, note the *client id* and *client secret* for the application and create corresponding files with these values in the project directory, `./secret/client_id`, `./secret/client_secret`. Configure a callback URL (with HTTPS) to where ever you want to access the service, default being, `https://lofy:3443/callback`.
 
-Run `./scripts/ssl.bash <domain name>` to generate a self-signed server certificate and key under `./secret/` to use for HTTPS. To install the certificate of the CA on macOS one can use the command 
-
-```bash
-sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ssl/certs/ca.crt.
-```
+To setup TLS create a `server.key` and `server.crt` with `openssl` signed by a trusted CA and place them under `./secret`.
 
 Install node dependencies
 

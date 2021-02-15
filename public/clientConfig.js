@@ -48,8 +48,8 @@ const CONFIG = Object.freeze({
 
     //** Shortcuts **/
     pausePlay: ' ',
-    scrollUp: 'k',
-    scrollDown: 'j',
+    scrollUp: 'u',
+    scrollDown: 'd',
     scrollTop: 'g',
     scrollBottom: 'G',
 
