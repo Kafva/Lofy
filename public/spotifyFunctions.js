@@ -40,25 +40,31 @@ const refreshToken = async (spotifyPlayer) =>
 
 const InitSpotifyPlayer = async (spotifyPlayer) =>
 {
-    // Activate the web spotifyPlayer (without starting any music)
-    await fetch(`https://api.spotify.com/v1/me/player`, {
-        method: 'PUT',
-        body: JSON.stringify({ 
-            device_ids: [ spotifyPlayer._options.id ],
-            play: false
-        }),
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${getCookiesAsJSON().access_token}`
-        },
-    });
-    await new Promise(r => setTimeout(r, CONFIG.newTrackDelay));
+    await new Promise(r => setTimeout(r, CONFIG.initDelay));
     
     // Set auto-repeat state
-    await fetch(`https://api.spotify.com/v1/me/player/repeat?state=${CONFIG.defaultAutoRepeatState}&device_id=${spotifyPlayer._options.id}`, {
-        method: 'PUT',
-        headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
-    });
+    if(spotifyPlayer._options.id != undefined) {
+        
+        // Activate the web spotifyPlayer (without starting any music)
+        await fetch(`https://api.spotify.com/v1/me/player?device_id=${spotifyPlayer._options.id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ 
+                device_ids: [ spotifyPlayer._options.id ],
+                play: false
+            }),
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${getCookiesAsJSON().access_token}`
+            },
+        });
+        await new Promise(r => setTimeout(r, CONFIG.initDelay));
+
+        await fetch(`https://api.spotify.com/v1/me/player/repeat?state=${CONFIG.defaultAutoRepeatState}&device_id=${spotifyPlayer._options.id}`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${getCookiesAsJSON().access_token}` },
+        });
+    }
+    else { console.error("Could not start player due to empty 'deviceid'"); }
     
     // Set shuffle state off ('silence' might be played first otherwise)
     await fetch(`https://api.spotify.com/v1/me/player/shuffle?state=false`, {
@@ -219,7 +225,7 @@ const getPlayerJSON = async () =>
     {
         body = JSON.parse(body)
     }
-    catch(e){ throw(e); }
+    catch(e){ throw(e, body); }
     if(body == null){ throw("Empty response from /player"); }
 
     return body;
@@ -246,7 +252,10 @@ const setupSpotifyPlaylistsUI = async () =>
 
     // Determine the current playlist (if any)
     let playlist_url = false;
-    let _json = await getPlayerJSON();
+    let _json = null;
+    try { _json = await getPlayerJSON(); }
+    catch(e) { console.error(e); }
+    
     if (_json != undefined && _json != null)
     {
         if (_json.context != null)

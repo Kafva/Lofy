@@ -21,6 +21,7 @@ const CONFIG = Object.freeze({
     shuffleClass: 'nf nf-mdi-shuffle_variant',
     noContextOption: '-',
     newTrackDelay: 1500,
+    initDelay: 3000,
     defaultAutoRepeatState: 'off',
     tableColumns: 5,
     unknown: 'Unknown',

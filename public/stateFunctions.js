@@ -238,6 +238,11 @@ const addPlayerListeners = (STATE, HISTORY, spotifyPlayer) =>
     spotifyPlayer.addListener('ready', ({ device_id }) => 
     { 
         console.log('Ready with Device ID', device_id);
+        
+        if (spotifyPlayer._options.id == null) {
+            // New bug: device_id needs to be manually set
+            spotifyPlayer._options.id = device_id;
+        }
         (async ()=>
         {
             await SpotifyFunctions.InitSpotifyPlayer(spotifyPlayer);
