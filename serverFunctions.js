@@ -175,6 +175,9 @@ module.exports = (CONFIG) =>
             
             // Pop the last empty line
             tracks.pop();
+            
+            // Remove any duplicate entries
+            tracks = [... new Set(tracks) ];
 
             let tracks_meta = [];
             
