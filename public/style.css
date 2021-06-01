@@ -1,19 +1,16 @@
-@font-face 
-{
+@font-face {
     /* https://fonts.google.com/specimen/Source+Sans+Pro?sidebar.open=true&selection.family=Source+Sans+Pro */
     font-family: 'Source Sans Pro';
     src: url('resc/SourceSansPro-Regular.ttf'); 
 }
 
-* 
-{ 
+* { 
     font-family: 'Source Sans Pro', Arial; 
     overflow: scroll; 
     white-space: nowrap;
 }
 
-:root 
-{
+:root {
 	/* COLORS */    
     --bar: #131314;
     --bkg: #1a1c1f;
@@ -24,8 +21,7 @@
 }
 
 
-body
-{ 
+body { 
     background-color: var(--bkg); 
     color: var(--text);
     margin: 0; padding: 0; border: 0; outline: 0;
@@ -34,8 +30,7 @@ body
 audio { display: none; }
 
 /********** Bar **********/
-#bar 
-{
+#bar {
    background-color: var(--bar);
    opacity: 1.0;
    position: fixed;
@@ -51,24 +46,21 @@ audio { display: none; }
 }
 
 /* Organize #bar items in a horizontal list */
-#bar > div
-{
+#bar > div {
     opacity: 1.0;
     display: inline-block;
     width: fit-content;
     margin: 5px;
 }
 
-#currentTrack
-{
+#currentTrack {
     max-height: 20px;
     max-width: 200px;
     text-overflow: ellipsis;
     overflow: hidden;
 }
 
-#bar > select
-{
+#bar > select {
     opacity: 1.0;
     background-color: var(--bkg);
     color: var(--text);
@@ -79,16 +71,14 @@ audio { display: none; }
 
 }
 
-.seperator
-{
+.seperator {
     margin: 10px;
 }
 
 /********* Flex container *******/
 
 #container
-/* The trackList and cover are setup inside a flexbox */
-{
+/* The trackList and cover are setup inside a flexbox */ {
     position: absolute;
     top: 8%;
     left: 0%;
@@ -110,8 +100,7 @@ audio { display: none; }
     to   { opacity: 0.6; }
 }
 
-#cover
-{ 
+#cover { 
     margin-left: 10px;
     margin-right: 10px;
     
@@ -138,8 +127,7 @@ audio { display: none; }
     to   { opacity: 1; }
 }
 
-#trackList
-{
+#trackList {
     border-collapse: collapse;
     text-align: right;
 
@@ -156,8 +144,7 @@ audio { display: none; }
 }
 
 /******** Track items *******/
-.trackItem
-{
+.trackItem {
     opacity: 1.0;
     max-height: 18px;
     margin-bottom: 5px;
@@ -165,15 +152,13 @@ audio { display: none; }
     border-bottom: 1px solid rgba(65, 64, 64, 0.5)
 }
 
-.trackItem:hover
-{
+.trackItem:hover {
     border: 1px solid var(--tint);
     background-color: rgba(69, 69, 75, 0.5);
     opacity: 0.5;
 }
 
-.trackItem > td
-{
+.trackItem > td {
     /* Set an upper limit for the width of column text in the playlist */
     text-overflow: ellipsis;
     overflow: hidden;
@@ -181,16 +166,14 @@ audio { display: none; }
 }
 
 td,th { padding-right: 14px;  }
-thead
-{
+thead {
     margin-bottom: 5px;
     border-bottom: 1px solid rgba(65, 64, 64, 0.5)
 }
 
 /********* MISC *********/
 
-.amp
-{
+.amp {
     content: url("resc/amp.gif");
     align-content: right;
     height: 20px;
@@ -202,13 +185,11 @@ thead
     content: "\f04b" !important;
 }
 
-.clickable
-{
+.clickable {
     cursor: pointer;
 }
 
-.floatLeft
-{
+.floatLeft {
     float: left;
     font-size: medium;
 }
