@@ -11,7 +11,7 @@ Install node dependencies
 npm install
 ```
 
-The app can then be ran with `node main.js`. A configuration to manage the service via `launchctl` is included. Note that to use the provided `com..lofy.plist` configuration the `WorkingDirectory` needs to be modified in accordance with the setup. If you are using `nvm` you may also haft to change the path to the `node` executable (project uses v15.8.0).
+The app can then be ran with `node main.js`. A configuration to manage the service via `launchctl` is included. Note that to use the provided `com..lofy.plist` configuration the `WorkingDirectory` needs to be modified in accordance with the setup. If you are using `nvm` you may also haft to change the path to the `node` executable.
 
 ```bash
 # Load the service (not persistent after a reboot) 
@@ -22,6 +22,8 @@ launchctl start com..lofy
 launchctl stop  com..lofy
 
 ```
+
+To have the service launch automatically on startup, change the value for the `RunAtLoad` key to `true` and copy the `com..lofy.plist` file to `~/Library/LaunchAgents/`.
 
 On first visit the site will redirect for OAuth authentication with Spotify.
 
