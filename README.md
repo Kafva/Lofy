@@ -1,5 +1,7 @@
 # Lofy
 
+![](.github/screenshot.png)
+
 ## Setting up the service
 Create a Spotify developer account and register a new application, note the *client id* and *client secret* for the application and create corresponding files with these values in the project directory, `./secret/client_id`, `./secret/client_secret`. Configure a callback URL (with HTTPS) to where ever you want to access the service, default being, `https://lofy:3443/callback`.
 
